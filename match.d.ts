@@ -33,4 +33,13 @@ export interface Matcher<T, R = any> {
 // MAIN FUNCTION
 // ============================================
 
-export declare function match<T>(value: T): Matcher<T>;
+// Tuple for array syntax
+export type MatchTuple<T, R = any> = [pattern: any, handler: Handler<T, R>];
+
+// Object syntax for simple cases
+export type MatchObject<R = any> = Record<string | number | symbol, Handler<any, R>>;
+
+// Overloads for different syntaxes
+export declare function match<T>(value: T): Matcher<T>; // Chained
+export declare function match<T, R = any>(value: T, patterns: MatchTuple<T, R>[]): R; // Array
+export declare function match<T, R = any>(value: T, patterns: MatchObject<R>): R; // Object

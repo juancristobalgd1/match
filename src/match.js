@@ -6,7 +6,36 @@ export const range = (min, max) => (value) =>
 
 export { _ };
 
-export const match = (value) => {
+export const match = (value, patterns) => {
+  // Array syntax: match(value, [[pattern, handler], ...])
+  if (Array.isArray(patterns)) {
+    const bindings = {};
+    for (const [pattern, handler] of patterns) {
+      if (checkMatch(value, pattern, bindings)) {
+        return typeof handler === "function" ? handler(bindings, value) : handler;
+      }
+      // Reset bindings for next pattern
+      for (const key in bindings) delete bindings[key];
+    }
+    return undefined;
+  }
+
+  // Object syntax: match(value, { 1: "uno", 2: "dos", _: "default" })
+  if (patterns && typeof patterns === "object" && !Array.isArray(patterns)) {
+    // Try exact match first
+    if (patterns.hasOwnProperty(value)) {
+      const handler = patterns[value];
+      return typeof handler === "function" ? handler({}, value) : handler;
+    }
+    // Try wildcard
+    if (patterns.hasOwnProperty("_") || patterns.hasOwnProperty(_)) {
+      const handler = patterns._ !== undefined ? patterns._ : patterns[_];
+      return typeof handler === "function" ? handler({}, value) : handler;
+    }
+    return undefined;
+  }
+
+  // Chained syntax: match(value)(pattern, handler)(pattern, handler)
   let matched = false,
     result;
 

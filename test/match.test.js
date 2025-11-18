@@ -481,3 +481,203 @@ describe("match - Enhanced Expressiveness", () => {
     });
   });
 });
+
+describe("match - Array Syntax (Tuples)", () => {
+  test("basic numbers with array syntax", () => {
+    const result = match(2, [
+      [1, "uno"],
+      [2, "dos"],
+      [3, "tres"],
+      [_, "otro"],
+    ]);
+    expect(result).toBe("dos");
+  });
+
+  test("object destructuring with array syntax", () => {
+    const user = { name: "Ana", role: "admin" };
+    const result = match(user, [
+      [{ role: "admin", name: "$n" }, (b) => `Hello ${b.n}`],
+      [{ role: "user" }, "User"],
+      [_, "Guest"],
+    ]);
+    expect(result).toBe("Hello Ana");
+  });
+
+  test("regex with array syntax", () => {
+    const result = match("test@gmail.com", [
+      [/^[\w.]+@gmail\.com$/, "Gmail"],
+      [/^[\w.]+@.*\.edu$/, "Academic"],
+      [_, "Other"],
+    ]);
+    expect(result).toBe("Gmail");
+  });
+
+  test("range with array syntax", () => {
+    const result = match(15, [
+      [range(0, 12), "Child"],
+      [range(13, 17), "Teenager"],
+      [range(18, 64), "Adult"],
+      [_, "Senior"],
+    ]);
+    expect(result).toBe("Teenager");
+  });
+
+  test("rest patterns with array syntax", () => {
+    const result = match([1, 2, 3, 4], [
+      [[1, "...$rest"], (b) => b.rest],
+      [_, []],
+    ]);
+    expect(result).toEqual([2, 3, 4]);
+  });
+
+  test("OR patterns with array syntax", () => {
+    const result = match("admin", [
+      [["admin", "superuser", "moderator"], "Admin"],
+      [["user", "guest"], "Limited"],
+      [_, "None"],
+    ]);
+    expect(result).toBe("Admin");
+  });
+
+  test("guards with array syntax", () => {
+    const result = match(17, [
+      [(x) => x >= 18, "Adult"],
+      [(x) => x >= 13, "Teen"],
+      [_, "Child"],
+    ]);
+    expect(result).toBe("Teen");
+  });
+
+  test("complex nested with array syntax", () => {
+    const data = { user: { profile: { role: "admin", city: "Madrid" } } };
+    const result = match(data, [
+      [
+        { user: { profile: { role: "admin", city: "$c" } } },
+        (b) => `Admin in ${b.c}`,
+      ],
+      [{ user: { profile: { role: "user" } } }, "User"],
+      [_, "Guest"],
+    ]);
+    expect(result).toBe("Admin in Madrid");
+  });
+
+  test("no match returns undefined", () => {
+    const result = match(5, [
+      [1, "one"],
+      [2, "two"],
+    ]);
+    expect(result).toBe(undefined);
+  });
+
+  test("wildcard always matches", () => {
+    const result = match(999, [
+      [1, "one"],
+      [_, "default"],
+    ]);
+    expect(result).toBe("default");
+  });
+});
+
+describe("match - Object Syntax", () => {
+  test("basic numbers with object syntax", () => {
+    const result = match(2, {
+      1: "uno",
+      2: "dos",
+      3: "tres",
+      _: "otro",
+    });
+    expect(result).toBe("dos");
+  });
+
+  test("wildcard with object syntax", () => {
+    const result = match(999, {
+      1: "one",
+      2: "two",
+      _: "default",
+    });
+    expect(result).toBe("default");
+  });
+
+  test("strings as keys", () => {
+    const result = match("admin", {
+      admin: "Administrator",
+      user: "Regular User",
+      _: "Guest",
+    });
+    expect(result).toBe("Administrator");
+  });
+
+  test("handler function with object syntax", () => {
+    const result = match(5, {
+      1: (_, v) => v * 2,
+      5: (_, v) => v * 10,
+      _: 0,
+    });
+    expect(result).toBe(50);
+  });
+
+  test("no match returns undefined", () => {
+    const result = match(10, {
+      1: "one",
+      2: "two",
+    });
+    expect(result).toBe(undefined);
+  });
+
+  test("zero and null as keys", () => {
+    const result1 = match(0, {
+      0: "zero",
+      _: "other",
+    });
+    expect(result1).toBe("zero");
+
+    const result2 = match(null, {
+      null: "is null",
+      _: "other",
+    });
+    expect(result2).toBe("is null");
+  });
+});
+
+describe("match - Syntax Comparison", () => {
+  const user = { name: "Ana", role: "admin", age: 28 };
+
+  test("all three syntaxes produce same result", () => {
+    // Chained
+    const r1 = match(user)(
+      { role: "admin", name: "$n" },
+      (b) => `Admin ${b.n}`
+    )({ role: "user" }, "User")(_, "Guest");
+
+    // Array
+    const r2 = match(user, [
+      [{ role: "admin", name: "$n" }, (b) => `Admin ${b.n}`],
+      [{ role: "user" }, "User"],
+      [_, "Guest"],
+    ]);
+
+    expect(r1).toBe(r2);
+    expect(r1).toBe("Admin Ana");
+  });
+
+  test("simple cases: object syntax vs chained", () => {
+    const status = 200;
+
+    // Object syntax (cleaner for simple cases)
+    const r1 = match(status, {
+      200: "OK",
+      404: "Not Found",
+      500: "Error",
+      _: "Unknown",
+    });
+
+    // Chained syntax
+    const r2 = match(status)(200, "OK")(404, "Not Found")(500, "Error")(
+      _,
+      "Unknown"
+    );
+
+    expect(r1).toBe(r2);
+    expect(r1).toBe("OK");
+  });
+});

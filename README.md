@@ -22,7 +22,7 @@
 
 - 🛡️ **Type-safe** with TypeScript
 
-- 📦 **~1.4 KB** minified · 0 dependencies
+- 📦 **~1.8 KB** minified · 0 dependencies
 
 - ⚡ Optimal performance
 
@@ -34,37 +34,108 @@ npm install match-pro
 
 ```
 
-## 🚀 Ultra Clean Syntax (Recommended)
+## 🚀 Three Beautiful Syntaxes - Choose Your Style!
 
 ```javascript
 import { match, _, range } from "match-pro";
 
 const user = { name: "Ana", role: "admin" };
 
-// ✅ Super clean - no .when()
+// 1️⃣ Array Syntax (Recommended for complex patterns)
+const result1 = match(user, [
+  [{ role: "admin", name: "$n" }, (b) => `👑 Hello boss ${b.n}!`],
+  [{ role: "user", name: "$n" }, (b) => `👋 Hello ${b.n}`],
+  [_, "👻 Guest"]
+]);
 
-const result = match(user)(
+// 2️⃣ Object Syntax (Perfect for simple cases)
+const result2 = match(status, {
+  200: "✅ OK",
+  404: "❌ Not Found",
+  500: "💥 Error",
+  _: "❓ Unknown"
+});
+
+// 3️⃣ Chained Syntax (Functional & expressive)
+const result3 = match(user)(
   { role: "admin", name: "$n" },
   (b) => `👑 Hello boss ${b.n}!`
 )({ role: "user", name: "$n" }, (b) => `👋 Hello ${b.n}`)(_, "👻 Guest");
-
-// => "👑 Hello boss Ana!"
 ```
 
-## Syntax comparison
+## Syntax Comparison
 
-### Syntax
+### 1. Array Syntax (Cleanest for tables)
 
 ```javascript
+match(value, [
+  [pattern1, handler1],
+  [pattern2, handler2],
+  [_, default]
+])
+```
 
+### 2. Object Syntax (Best for primitives)
+
+```javascript
+match(value, {
+  key1: handler1,
+  key2: handler2,
+  _: default
+})
+```
+
+### 3. Chained Syntax (Most flexible)
+
+```javascript
 match(value)
-
   (pattern1, handler1)
-
   (pattern2, handler2)
-
   (_, default)
+```
 
+## Which Syntax Should I Use?
+
+| Syntax | Best For | Example |
+|--------|----------|---------|
+| **Array** | Complex patterns, multiple features | `match(user, [[{role: "admin"}, "Admin"], [_, "User"]])` |
+| **Object** | Simple value mapping, primitives | `match(status, {200: "OK", 404: "Not Found", _: "Error"})` |
+| **Chained** | Functional style, single-line patterns | `match(x)(1, "one")(2, "two")(_, "other")` |
+
+### When Array Syntax Shines ✨
+
+```javascript
+// Clean, readable, table-like structure
+const result = match(request, [
+  [{ method: "GET", path: "/users" }, () => listUsers()],
+  [{ method: "GET", path: "/users/$id" }, (b) => getUser(b.id)],
+  [{ method: "POST", path: "/users" }, () => createUser()],
+  [/^\/api\//, "API endpoint"],
+  [_, () => notFound()]
+]);
+```
+
+### When Object Syntax Shines ✨
+
+```javascript
+// Perfect for status codes, enums, simple mappings
+const httpStatus = match(code, {
+  200: "OK",
+  201: "Created",
+  400: "Bad Request",
+  404: "Not Found",
+  500: "Internal Server Error",
+  _: "Unknown Status"
+});
+```
+
+### When Chained Syntax Shines ✨
+
+```javascript
+// Elegant for inline, functional-style code
+const category = match(age)(
+  (x) => x < 13, "child"
+)(range(13, 17), "teen")(range(18, 64), "adult")(_, "senior");
 ```
 
 ## Quick examples

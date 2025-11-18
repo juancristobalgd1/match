@@ -37,8 +37,8 @@ jobs:
         run: |
           SIZE=$(wc -c < dist/match.min.js)
           echo "Build size: $SIZE bytes (~$(echo "scale=2; $SIZE/1024" | bc) KB)"
-          if [ $SIZE -gt 1536 ]; then
-            echo "Error: Build size exceeds 1.5KB limit!"
+          if [ $SIZE -gt 2048 ]; then
+            echo "Error: Build size exceeds 2KB limit!"
             exit 1
           fi
 
