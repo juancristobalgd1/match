@@ -1,80 +1,101 @@
 const _ = Symbol.for("match-wildcard");
 
+// Helper for range matching
+export const range = (min, max) => (value) =>
+  typeof value === "number" && value >= min && value <= max;
+
 export { _ };
 
 export const match = (value) => {
-  let matched = false;
+  let matched = false,
+    result;
 
-  let result = undefined;
-
-  // Matcher function that can be called directly: match(x)(pattern, handler)
   const matcher = (pattern, handler) => {
     const bindings = {};
 
-    // If there has already been a previous match, ignore the rest.
+    if (matched) return pattern === _ ? result : matcher;
 
-    if (matched) {
-      // If the pattern is a wildcard (_), return the result (final case)
-
-      if (pattern === _) return result;
-
-      // Otherwise, continue chaining (ignore subsequent patterns)
-
-      return matcher;
-    }
-
-    const matches = checkMatch(value, pattern, bindings);
-
-    if (matches) {
+    if (checkMatch(value, pattern, bindings)) {
       matched = true;
-
-      result =
-        typeof handler === "function" ? handler(bindings, value) : handler;
-
-      //If the pattern is a wildcard, which is the default case, return the result.
-
+      result = typeof handler === "function" ? handler(bindings, value) : handler;
       if (pattern === _) return result;
     }
-
-    // No match yet, return matcher to chain
 
     return matcher;
   };
 
-  // Allow direct access to the result through conversion
-
   matcher.valueOf = () => result;
-
   matcher.toString = () => String(result);
-
-  matcher[Symbol.toPrimitive] = (hint) => {
-    if (hint === "number") return Number(result);
-    if (hint === "string") return String(result);
-
-    return result;
-  };
+  matcher[Symbol.toPrimitive] = (hint) =>
+    hint === "number" ? Number(result) : hint === "string" ? String(result) : result;
 
   return matcher;
 };
 
-// Main function of matching
-
 function checkMatch(value, pattern, bindings) {
-  // Wildcard always matches
   if (pattern === _) return true;
-
-  //Function as guard
   if (typeof pattern === "function") return pattern(value);
-
-  // Primitive values
   if (typeof pattern !== "object" || pattern === null)
     return Object.is(value, pattern);
+  if (pattern instanceof RegExp)
+    return typeof value === "string" && pattern.test(value);
 
-  // Arrays (tuples)
+  // Arrays (tuples or OR patterns)
   if (Array.isArray(pattern)) {
+    // OR pattern: primitives only, match any
+    const isOr = pattern.every(
+      (p) =>
+        (typeof p !== "object" || p === null) &&
+        typeof p !== "function" &&
+        (typeof p !== "string" || !p.startsWith("$"))
+    );
+
+    if (isOr && !Array.isArray(value)) {
+      return pattern.some((p) => Object.is(value, p));
+    }
+
     if (!Array.isArray(value)) return false;
-    if (pattern.length !== value.length) return false;
-    return pattern.every((p, i) => checkMatch(value[i], p, bindings));
+
+    // Find rest pattern
+    let restIdx = -1;
+    for (let i = 0; i < pattern.length; i++) {
+      if (typeof pattern[i] === "string" && pattern[i].startsWith("...$")) {
+        restIdx = i;
+        break;
+      }
+    }
+
+    if (restIdx !== -1) {
+      const before = pattern.slice(0, restIdx);
+      const after = pattern.slice(restIdx + 1);
+      const minLen = before.length + after.length;
+
+      if (value.length < minLen) return false;
+
+      // Match before & after
+      for (let i = 0; i < before.length; i++) {
+        if (!checkMatch(value[i], before[i], bindings)) return false;
+      }
+      for (let i = 0; i < after.length; i++) {
+        if (
+          !checkMatch(value[value.length - after.length + i], after[i], bindings)
+        )
+          return false;
+      }
+
+      // Capture rest
+      bindings[pattern[restIdx].slice(4)] = value.slice(
+        before.length,
+        value.length - after.length
+      );
+      return true;
+    }
+
+    // Normal tuple
+    return (
+      pattern.length === value.length &&
+      pattern.every((p, i) => checkMatch(value[i], p, bindings))
+    );
   }
 
   // Objects
@@ -82,23 +103,11 @@ function checkMatch(value, pattern, bindings) {
 
   for (const key in pattern) {
     const pat = pattern[key];
-
-    // Capture with $variable
-
     if (typeof pat === "string" && pat.startsWith("$")) {
-      const varName = pat.slice(1);
-
-      bindings[varName] = value[key];
-
+      bindings[pat.slice(1)] = value[key];
       continue;
     }
-
-    // Wildcard in property
-
     if (pat === _) continue;
-
-    // Matching recursively
-
     if (!checkMatch(value[key], pat, bindings)) return false;
   }
 

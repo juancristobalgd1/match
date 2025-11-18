@@ -1,7 +1,7 @@
 {
   "name": "match-pro",
   "version": "1.0.0",
-  "description": "The most elegant and lightweight pattern matching in pure JavaScript · < 1 KB · 0 deps",
+  "description": "The most elegant and lightweight pattern matching in pure JavaScript · ~1.4 KB · 0 deps",
   "type": "module",
   "main": "dist/match.min.js",
   "module": "src/match.js",

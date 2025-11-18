@@ -2,6 +2,9 @@ export declare const _: unique symbol;
 
 export type Wildcard = typeof _;
 
+// Range helper for numeric matching
+export declare function range(min: number, max: number): (value: any) => boolean;
+
 // Types for bindings captured with $variable
 export type Bindings = Record<string, any>;
 

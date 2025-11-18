@@ -12,9 +12,17 @@
 
 - 🔥 **Wildcards** `_` for any value
 
+- 🎨 **Rest patterns** `...$rest` for arrays
+
+- 📝 **Regex support** for string matching
+
+- 🔢 **Range matching** with `range()` helper
+
+- 🔀 **OR patterns** `["a", "b", "c"]`
+
 - 🛡️ **Type-safe** with TypeScript
 
-- 📦 **< 1 KB** · 0 dependencies
+- 📦 **~1.4 KB** minified · 0 dependencies
 
 - ⚡ Optimal performance
 
@@ -29,7 +37,7 @@ npm install match-pro
 ## 🚀 Ultra Clean Syntax (Recommended)
 
 ```javascript
-import { match, _ } from "match-pro";
+import { match, _, range } from "match-pro";
 
 const user = { name: "Ana", role: "admin" };
 
@@ -222,6 +230,117 @@ match({ score: 85 })({ score: (s) => s >= 90 }, "🏆 Excellent")(
 // => "✅ Passed"
 ```
 
+## 🎨 Enhanced Features (NEW!)
+
+### Rest Patterns (Array Spread)
+
+Capture the rest of an array with `...$variable`:
+
+```javascript
+// Capture tail
+match([1, 2, 3, 4])([1, "...$rest"], (b) => b.rest)(_, []);
+// => [2, 3, 4]
+
+// Capture middle
+match([1, 2, 3, 4, 5])([1, "...$mid", 5], (b) => b.mid)(_, []);
+// => [2, 3, 4]
+
+// Capture head
+match([1, 2, 3, 4])(["...$head", 4], (b) => b.head)(_, []);
+// => [1, 2, 3]
+```
+
+### Regex Patterns
+
+Match strings with regular expressions:
+
+```javascript
+match("test@gmail.com")(
+  /^[\w.]+@gmail\.com$/,
+  "Gmail user"
+)(/^[\w.]+@.*\.edu$/, "Academic email")(_, "Other");
+// => "Gmail user"
+
+match("student@stanford.edu")(
+  /^[\w.]+@gmail\.com$/,
+  "Gmail"
+)(/^[\w.]+@.*\.edu$/, "Academic")(_, "Other");
+// => "Academic"
+```
+
+### Range Matching
+
+Use the `range()` helper for numeric ranges:
+
+```javascript
+import { match, _, range } from "match-pro";
+
+match(15)(range(0, 12), "Child")(range(13, 17), "Teenager")(
+  range(18, 64),
+  "Adult"
+)(range(65, Infinity), "Senior")(_, "Unknown");
+// => "Teenager"
+
+// Classification pipeline
+[10, 15, 25, 70]
+  .map((age) =>
+    match(age)(range(0, 12), "Child")(range(13, 17), "Teen")(
+      range(18, 64),
+      "Adult"
+    )(_, "Senior")
+  );
+// => ["Child", "Teen", "Adult", "Senior"]
+```
+
+### OR Patterns
+
+Match against multiple values with array patterns:
+
+```javascript
+match("admin")(
+  ["admin", "superuser", "moderator"],
+  "Admin access"
+)(["user", "guest"], "Limited access")(_, "No access");
+// => "Admin access"
+
+match(2)([1, 2, 3], "Low")([4, 5, 6], "Medium")([7, 8, 9], "High")(
+  _,
+  "Other"
+);
+// => "Low"
+
+// Works with null/undefined too
+match(null)([null, undefined], "Empty")(_, "Has value");
+// => "Empty"
+```
+
+### Combined Example
+
+```javascript
+const processInput = (input) =>
+  match(input)(
+    // Regex pattern
+    /^\/help/, "Showing help..."
+  )(
+    // OR pattern
+    ["quit", "exit", "q"],
+    "Goodbye!"
+  )(
+    // Rest pattern
+    ["echo", "...$args"],
+    (b) => b.args.join(" ")
+  )(
+    // Range with guard
+    range(1, 100),
+    (n) => `Number: ${n}`
+  )(_, "Unknown command");
+
+processInput("/help"); // => "Showing help..."
+processInput("quit"); // => "Goodbye!"
+processInput(["echo", "Hello", "World"]); // => "Hello World"
+processInput(42); // => "Number: 42"
+```
+
 ## API Reference
 
 ### Clean syntax
@@ -243,9 +362,15 @@ match(value)
 
 - Object: `{ role: "admin" }`
 
-- Array: `[1, _, 3]`
+- Array/Tuple: `[1, _, 3]`
 
-- Guard function: `x => x >= 18`
+- Rest pattern: `[1, "...$rest"]` (captures remaining elements)
+
+- OR pattern: `["admin", "superuser"]` (matches any value in array)
+
+- Regex: `/^test@/` (matches strings)
+
+- Guard function: `x => x >= 18` or `range(18, 64)`
 
 - Wildcard: `_`
 
@@ -279,6 +404,21 @@ match({ name: "Ana", age: 28 })(
 
 // Bindings: { n: "Ana", a: 28 }
 ```
+
+### Helper: `range(min, max)`
+
+Creates a guard function for numeric range matching (inclusive).
+
+```javascript
+import { range } from "match-pro";
+
+range(0, 10); // Returns: (value) => value >= 0 && value <= 10
+
+// Usage
+match(5)(range(0, 10), "in range")(_, "out of range");
+// => "in range"
+```
+
 ## Comparison with switch/if-else
 
 ### ❌ With switch (verbose)
@@ -316,12 +456,17 @@ const result = match(user)({ role: "admin", name: "$n" }, (b) => `Hola ${b.n}`)(
 All types included:
 
 ```typescript
-import { match, _, Wildcard, Bindings } from "match";
+import { match, _, range, Wildcard, Bindings } from "match-pro";
 
 const result: string = match<User>(user)({ role: "admin" }, "Admin")(
   { role: "user" },
   "User"
 )(_, "Guest");
+
+// With range helper
+const ageGroup: string = match<number>(25)(
+  range(0, 17), "Minor"
+)(range(18, Infinity), "Adult")(_, "Unknown");
 ```
 ## Why use match?
 

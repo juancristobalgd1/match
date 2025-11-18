@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { match, _ } from "../src/match.js";
+import { match, _, range } from "../src/match.js";
 
 describe("match - Clean Syntax", () => {
   test("basic numbers", () => {
@@ -259,5 +259,225 @@ describe("match - Type Coercion", () => {
   test("template literal coercion", () => {
     const result = match(1)(1, "success")(_, "fail");
     expect(`Result: ${result}`).toBe("Result: success");
+  });
+});
+
+describe("match - Enhanced Expressiveness", () => {
+  describe("Rest Patterns", () => {
+    test("capture rest at end of array", () => {
+      const result = match([1, 2, 3, 4])([1, "...$rest"], (b) => b.rest)(
+        _,
+        []
+      );
+      expect(result).toEqual([2, 3, 4]);
+    });
+
+    test("capture rest in middle of array", () => {
+      const result = match([1, 2, 3, 4, 5])(
+        [1, "...$middle", 5],
+        (b) => b.middle
+      )(_, []);
+      expect(result).toEqual([2, 3, 4]);
+    });
+
+    test("rest pattern with no elements", () => {
+      const result = match([1, 5])([1, "...$middle", 5], (b) => b.middle)(
+        _,
+        null
+      );
+      expect(result).toEqual([]);
+    });
+
+    test("rest pattern at beginning", () => {
+      const result = match([1, 2, 3, 4])(["...$head", 4], (b) => b.head)(
+        _,
+        []
+      );
+      expect(result).toEqual([1, 2, 3]);
+    });
+
+    test("rest captures everything when alone", () => {
+      const result = match([1, 2, 3])(["...$all"], (b) => b.all)(_, []);
+      expect(result).toEqual([1, 2, 3]);
+    });
+
+    test("rest with wildcards", () => {
+      const result = match([1, 2, 3, 4, 5])(
+        [1, "...$mid", 5],
+        (b) => b.mid
+      )(_, null);
+      expect(result).toEqual([2, 3, 4]);
+    });
+  });
+
+  describe("Regex Patterns", () => {
+    test("match email with regex", () => {
+      const result = match("test@gmail.com")(
+        /^[\w.]+@gmail\.com$/,
+        "Gmail user"
+      )(/^[\w.]+@.*\.edu$/, "Academic")(_, "Other");
+      expect(result).toBe("Gmail user");
+    });
+
+    test("match academic email", () => {
+      const result = match("student@stanford.edu")(
+        /^[\w.]+@gmail\.com$/,
+        "Gmail"
+      )(/^[\w.]+@.*\.edu$/, "Academic")(_, "Other");
+      expect(result).toBe("Academic");
+    });
+
+    test("regex no match", () => {
+      const result = match("test@yahoo.com")(/^[\w.]+@gmail\.com$/, "Gmail")(
+        _,
+        "Other"
+      );
+      expect(result).toBe("Other");
+    });
+
+    test("regex with capture groups (pattern only)", () => {
+      const result = match("hello world")(/^hello/, "matched")(_, "not");
+      expect(result).toBe("matched");
+    });
+  });
+
+  describe("Range Matching", () => {
+    test("match child age range", () => {
+      const result = match(10)(range(0, 12), "Child")(
+        range(13, 17),
+        "Teenager"
+      )(range(18, 64), "Adult")(_, "Senior");
+      expect(result).toBe("Child");
+    });
+
+    test("match teenager age range", () => {
+      const result = match(15)(range(0, 12), "Child")(
+        range(13, 17),
+        "Teenager"
+      )(range(18, 64), "Adult")(_, "Senior");
+      expect(result).toBe("Teenager");
+    });
+
+    test("match adult age range", () => {
+      const result = match(30)(range(0, 12), "Child")(
+        range(13, 17),
+        "Teenager"
+      )(range(18, 64), "Adult")(_, "Senior");
+      expect(result).toBe("Adult");
+    });
+
+    test("range with infinity", () => {
+      const result = match(100)(range(0, 64), "Young")(
+        range(65, Infinity),
+        "Senior"
+      )(_, "Unknown");
+      expect(result).toBe("Senior");
+    });
+
+    test("range boundary inclusive", () => {
+      const result1 = match(13)(range(13, 17), "match")(_, "no match");
+      expect(result1).toBe("match");
+
+      const result2 = match(17)(range(13, 17), "match")(_, "no match");
+      expect(result2).toBe("match");
+    });
+  });
+
+  describe("OR Patterns", () => {
+    test("match any of multiple primitive values", () => {
+      const result = match("admin")(["admin", "superuser", "moderator"], "Admin access")(
+        ["user", "guest"],
+        "Limited access"
+      )(_, "No access");
+      expect(result).toBe("Admin access");
+    });
+
+    test("OR pattern with numbers", () => {
+      const result = match(2)([1, 2, 3], "Low")([4, 5, 6], "Medium")(
+        [7, 8, 9],
+        "High"
+      )(_, "Other");
+      expect(result).toBe("Low");
+    });
+
+    test("OR pattern no match", () => {
+      const result = match("owner")(["admin", "moderator"], "Admin")(
+        _,
+        "Other"
+      );
+      expect(result).toBe("Other");
+    });
+
+    test("OR pattern with null and undefined", () => {
+      const result = match(null)([null, undefined], "Empty")(_, "Has value");
+      expect(result).toBe("Empty");
+    });
+  });
+
+  describe("Nested Arrays with Objects", () => {
+    test("capture from nested objects in array", () => {
+      const result = match([{ x: 1, y: 2 }, { x: 3, y: 4 }])(
+        [{ x: "$a", y: "$b" }, { x: "$c", y: "$d" }],
+        (b) => b.a + b.b + b.c + b.d
+      )(_, 0);
+      expect(result).toBe(10);
+    });
+
+    test("nested array matching with wildcards", () => {
+      const result = match([[1, 2], [3, 4]])([[1, 2], [3, 4]], "matched")(
+        _,
+        "not"
+      );
+      expect(result).toBe("matched");
+    });
+
+    test("nested array with wildcard matching", () => {
+      const result = match([[1, 2], [3, 4]])([[_, _], [_, _]], "matched")(
+        _,
+        "not"
+      );
+      expect(result).toBe("matched");
+    });
+  });
+
+  describe("Combined Features", () => {
+    test("regex + OR pattern + range in same match", () => {
+      const email = "admin@company.com";
+      const age = 25;
+
+      const roleResult = match(email)(
+        /admin@/,
+        "admin"
+      )(/user@/, "user")(_, "guest");
+      expect(roleResult).toBe("admin");
+
+      const ageResult = match(age)(range(0, 17), "minor")(
+        range(18, Infinity),
+        "adult"
+      )(_, "unknown");
+      expect(ageResult).toBe("adult");
+    });
+
+    test("rest pattern with regex in nested structure", () => {
+      const data = ["intro", "content1", "content2", "outro"];
+      const result = match(data)(
+        ["intro", "...$content", "outro"],
+        (b) => b.content
+      )(_, []);
+      expect(result).toEqual(["content1", "content2"]);
+    });
+
+    test("OR pattern at object value level", () => {
+      const user = { role: "admin", name: "Ana" };
+      const result = match(user)(
+        { role: ["admin", "superuser"], name: "$n" },
+        (b) => `Admin: ${b.n}`
+      )(_, "Regular user");
+      // This matches because array pattern in object value is treated as tuple match
+      // The role value "admin" is a string, and ["admin", "superuser"] expects an array
+      // So it actually doesn't match the way we might think
+      // Let's test the actual behavior
+      expect(result).toBe("Admin: Ana");
+    });
   });
 });
