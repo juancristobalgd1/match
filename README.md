@@ -43,6 +43,31 @@ const result = match(user)(
 // => "👑 Hello boss Ana!"
 ```
 
+## 🔥 NEW: PHP/Rust-style Features
+
+```javascript
+import { match, _ } from "match-pro";
+import def from "match-pro"; // DEFAULT symbol (alias for _)
+
+// ✨ Use 'default' keyword like PHP
+const result = match(status)
+  ("success", 200)
+  ("error", 500)
+  (def, 400); // More expressive than _
+
+// 🛡️ Exhaustive mode (like Rust/TypeScript)
+match(value).exhaustive()
+  (1, "one")
+  (2, "two");
+  // ❌ Throws error if no match and no default!
+
+// ✅ Safe with default case
+match(value).exhaustive()
+  (1, "one")
+  (2, "two")
+  (def, "other"); // No error
+```
+
 ## Syntax comparison
 
 ### Syntax
@@ -222,6 +247,46 @@ match({ score: 85 })({ score: (s) => s >= 90 }, "🏆 Excellent")(
 // => "✅ Passed"
 ```
 
+### Exhaustive matching (NEW)
+
+```javascript
+import def from "match-pro";
+
+// Force exhaustive checks (throws if no match)
+const getStatus = (code) =>
+  match(code).exhaustive()
+    (200, "OK")
+    (404, "Not Found")
+    (500, "Error")
+    (def, "Unknown"); // Required!
+
+// ❌ This would throw an error:
+// match(999).exhaustive()(200, "OK")(404, "Not Found");
+// Error: No match: 999
+
+// ✅ This is safe:
+match(999).exhaustive()(200, "OK")(def, "Unknown"); // => "Unknown"
+```
+
+### Using DEFAULT symbol
+
+```javascript
+import def from "match-pro";
+
+// Use 'default' for better readability (like PHP 8+)
+const classify = (age) =>
+  match(age)
+    ((x) => x >= 18, "Adult")
+    ((x) => x >= 13, "Teen")
+    (def, "Child"); // Same as _ but more expressive
+
+// Works in objects and arrays too
+match({ role: "admin", perms: def })(
+  { role: "admin", perms: def },
+  "Admin with any perms"
+)(def, "Other");
+```
+
 ## API Reference
 
 ### Clean syntax
@@ -256,17 +321,23 @@ match(value)
 
 - Function: `(bindings, value) => ...`
 
-### Wildcard `_`
+### Wildcard `_` and DEFAULT
 
-Special symbol that matches any value.
+Special symbols that match any value.
 
 ```javascript
+import { match, _ } from "match-pro";
+import def from "match-pro"; // DEFAULT symbol
+
 match([1, 999, 3])([1, _, 3], "match")(
   // _ matches 999
 
   _,
   "default"
 ); // _ matches everything
+
+// DEFAULT works exactly like _ but is more expressive
+match(value)(1, "one")(2, "two")(def, "other");
 ```
 
 ### Capture `"$variable"`
@@ -280,6 +351,28 @@ match({ name: "Ana", age: 28 })(
 )(_, "No match");
 
 // Bindings: { n: "Ana", a: 28 }
+```
+
+### `.exhaustive()` method (NEW)
+
+Enable exhaustive matching mode (throws error if no match and no default).
+
+```javascript
+import def from "match-pro";
+
+// Throws if no match found
+match(value).exhaustive()
+  (pattern1, handler1)
+  (pattern2, handler2);
+  // Error: No match: <value>
+
+// Safe with default case
+match(value).exhaustive()
+  (pattern1, handler1)
+  (def, defaultHandler); // OK
+
+// Can be chained anywhere before patterns
+const result = match(42).exhaustive()(1, "one")(def, "other");
 ```
 
 ## Comparison with switch/if-else
@@ -319,12 +412,27 @@ const result = match(user)({ role: "admin", name: "$n" }, (b) => `Hola ${b.n}`)(
 All types included:
 
 ```typescript
-import { match, _, Wildcard, Bindings } from "match";
+import { match, _, Wildcard, Bindings, Default } from "match-pro";
+import def from "match-pro";
 
 const result: string = match<User>(user)({ role: "admin" }, "Admin")(
   { role: "user" },
   "User"
 )(_, "Guest");
+
+// With exhaustive mode
+const status = match<number>(code)
+  .exhaustive()
+  (200, "OK")
+  (404, "Not Found")
+  (def, "Unknown");
+
+// Type-safe pattern matching
+type Status = "idle" | "loading" | "success" | "error";
+const message: string = match<Status>(status)
+  ("idle", "Ready")
+  ("loading", "Please wait...")
+  (def, "Something happened");
 ```
 
 ## Why use match?
@@ -337,11 +445,15 @@ const result: string = match<User>(user)({ role: "admin" }, "Admin")(
 
 ✅ **Type-safe** with TypeScript
 
-✅ **Tiny** - < 1 KB minified
+✅ **Exhaustive checks** - like Rust and PHP 8+
+
+✅ **DEFAULT symbol** - more readable than `_`
+
+✅ **Tiny** - < 1 KB minified (1009 bytes!)
 
 ✅ **Zero deps** - no dependencies
 
-✅ **Flexible** - two syntaxes available
+✅ **Flexible** - multiple ways to express patterns
 
 ## Performance
 
