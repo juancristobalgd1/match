@@ -31,9 +31,3 @@ export interface Matcher<T, R = any> {
 // ============================================
 
 export declare function match<T>(value: T): Matcher<T>;
-
-// ============================================
-// NAMESPACE (for use with <script>)
-// ============================================
-
-export as namespace matchPro;

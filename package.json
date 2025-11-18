@@ -1,5 +1,5 @@
 {
-  "name": "match",
+  "name": "match-pro",
   "version": "1.0.0",
   "description": "The most elegant and lightweight pattern matching in pure JavaScript · < 1 KB · 0 deps",
   "type": "module",
@@ -12,8 +12,11 @@
     "match.d.ts"
   ],
   "scripts": {
-    "test": "node test/match.test.js",
-    "build": "terser src/match.js -c -m -o dist/match.min.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "build": "terser src/match.js -c -m -o dist/match.min.js",
+    "bench": "node benchmark/benchmark.js"
   },
   "keywords": [
     "pattern-matching",
@@ -28,6 +31,7 @@
   "repository": "https://github.com/juancristobalgd1/match",
   "devDependencies": {
     "terser": "^5.31.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.10"
   }
 }

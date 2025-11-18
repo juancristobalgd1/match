@@ -1,140 +1,263 @@
+import { describe, test, expect } from "vitest";
 import { match, _ } from "../src/match.js";
 
-console.log("🧪 Testing CLEAN SYNTAX (without .when)\n");
+describe("match - Clean Syntax", () => {
+  test("basic numbers", () => {
+    const result = match(2)(1, "uno")(2, "dos")(3, "tres")(_, "otro");
+    expect(result).toBe("dos");
+  });
 
-// Test 1:Basic figures
-const t1 = match(2)(1, "uno")(2, "dos")(3, "tres")(_, "otro");
+  test("objects with destructuring", () => {
+    const user = { name: "Ana", role: "admin" };
+    const result = match(user)(
+      { role: "admin", name: "$n" },
+      (b) => `Hola ${b.n}`
+    )({ role: "user" }, "Usuario")(_, "Invitado");
+    expect(result).toBe("Hola Ana");
+  });
 
-console.log(`Test 1 - Números: ${t1 === "dos" ? "✅" : "❌"}`);
+  test("arrays with wildcards", () => {
+    const result = match([1, 999, 3])([1, _, 3], "match")([_, 2, _], "no")(
+      _,
+      "otro"
+    );
+    expect(result).toBe("match");
+  });
 
-// Test 2: Objects with destructuring
+  test("guards", () => {
+    const result = match(17)(
+      (x) => x >= 18,
+      "mayor"
+    )((x) => x >= 13, "adolescente")(_, "niño");
+    expect(result).toBe("adolescente");
+  });
 
-const user = { name: "Ana", role: "admin" };
+  test("redux actions", () => {
+    const action = { type: "ADD_TODO", payload: { text: "test" } };
+    const result = match(action)(
+      { type: "ADD_TODO", payload: { text: "$t" } },
+      (b) => `Added: ${b.t}`
+    )({ type: "DELETE" }, "Deleted")(_, "Unknown");
+    expect(result).toBe("Added: test");
+  });
 
-const t2 = match(user)({ role: "admin", name: "$n" }, (b) => `Hola ${b.n}`)(
-  { role: "user" },
-  "Usuario"
-)(_, "Invitado");
+  test("multiple captures", () => {
+    const result = match({ a: 1, b: 2, c: 3 })(
+      { a: "$x", b: "$y", c: "$z" },
+      (b) => b.x + b.y + b.z
+    )(_, 0);
+    expect(result).toBe(6);
+  });
 
-console.log(`Test 2 - Destructuring: ${t2 === "Hola Ana" ? "✅" : "❌"}`);
+  test("nested objects", () => {
+    const result = match({ user: { profile: { role: "admin" } } })(
+      { user: { profile: { role: "admin" } } },
+      "admin"
+    )(_, "no admin");
+    expect(result).toBe("admin");
+  });
 
-// Test 3: Arrays with wildcards
+  test("first match wins", () => {
+    let counter = 0;
+    const result = match(1)(1, () => {
+      counter++;
+      return "first";
+    })(1, () => {
+      counter++;
+      return "second";
+    })(_, "default");
+    expect(result).toBe("first");
+    expect(counter).toBe(1);
+  });
 
-const t3 = match([1, 999, 3])([1, _, 3], "match")([_, 2, _], "no")(_, "otro");
+  test("wildcard as default", () => {
+    const result = match(999)(1, "uno")(2, "dos")(_, "default");
+    expect(result).toBe("default");
+  });
 
-console.log(`Test 3 - Arrays: ${t3 === "match" ? "✅" : "❌"}`);
+  test("no match returns undefined", () => {
+    const result = match(1)(2, "dos")(3, "tres")(_, undefined);
+    expect(result).toBe(undefined);
+  });
 
-// Test 4: Guards
+  test("string patterns", () => {
+    const result = match("hello")("world", "mundo")("hello", "hola")(
+      _,
+      "otro"
+    );
+    expect(result).toBe("hola");
+  });
 
-const t4 = match(17)((x) => x >= 18, "mayor")((x) => x >= 13, "adolescente")(
-  _,
-  "niño"
-);
+  test("null/undefined", () => {
+    const result = match(null)(null, "es null")(undefined, "es undefined")(
+      _,
+      "otro"
+    );
+    expect(result).toBe("es null");
+  });
 
-console.log(`Test 4 - Guards: ${t4 === "adolescente" ? "✅" : "❌"}`);
+  test("guards in objects", () => {
+    const result = match({ score: 85 })(
+      { score: (s) => s >= 90 },
+      "excelente"
+    )({ score: (s) => s >= 70 }, "aprobado")(_, "reprobado");
+    expect(result).toBe("aprobado");
+  });
 
-// Test 5: Redux actions
+  test("inline in functions", () => {
+    const classify = (edad) =>
+      match(edad)((x) => x >= 18, "mayor")((x) => x >= 13, "adolescente")(
+        _,
+        "niño"
+      );
+    const result = classify(15);
+    expect(result).toBe("adolescente");
+  });
 
-const action = { type: "ADD_TODO", payload: { text: "test" } };
+  test("state machine", () => {
+    const nextState = (state, event) =>
+      match({ state, event })({ state: "idle", event: "start" }, "loading")(
+        { state: "loading", event: "success" },
+        "ready"
+      )({ state: _, event: "reset" }, "idle")(_, state);
 
-const t5 = match(action)(
-  { type: "ADD_TODO", payload: { text: "$t" } },
-  (b) => `Added: ${b.t}`
-)({ type: "DELETE" }, "Deleted")(_, "Unknown");
+    expect(nextState("idle", "start")).toBe("loading");
+    expect(nextState("loading", "success")).toBe("ready");
+    expect(nextState("ready", "reset")).toBe("idle");
+    expect(nextState("loading", "unknown")).toBe("loading");
+  });
+});
 
-console.log(`Test 5 - Redux: ${t5 === "Added: test" ? "✅" : "❌"}`);
+describe("match - Edge Cases", () => {
+  test("empty object pattern", () => {
+    const result = match({ a: 1 })({}, "matched")(_, "not matched");
+    expect(result).toBe("matched");
+  });
 
-// Test 6: Múltiples captures
+  test("empty array pattern", () => {
+    const result = match([])([_, _], "not matched")([], "matched")(
+      _,
+      "default"
+    );
+    expect(result).toBe("matched");
+  });
 
-const t6 = match({ a: 1, b: 2, c: 3 })(
-  { a: "$x", b: "$y", c: "$z" },
-  (b) => b.x + b.y + b.z
-)(_, 0);
+  test("undefined value", () => {
+    const result = match(undefined)(null, "null")(undefined, "undefined")(
+      _,
+      "other"
+    );
+    expect(result).toBe("undefined");
+  });
 
-console.log(`Test 6 - Múltiples captures: ${t6 === 6 ? "✅" : "❌"}`);
+  test("boolean values", () => {
+    const result = match(true)(false, "false")(true, "true")(_, "other");
+    expect(result).toBe("true");
+  });
 
-// Test 7: Objetos anidados
+  test("zero and NaN", () => {
+    const result1 = match(0)(0, "zero")(_, "other");
+    expect(result1).toBe("zero");
 
-const t7 = match({ user: { profile: { role: "admin" } } })(
-  { user: { profile: { role: "admin" } } },
-  "admin"
-)(_, "no admin");
+    const result2 = match(NaN)(NaN, "NaN")(_, "other");
+    expect(result2).toBe("NaN");
+  });
 
-console.log(`Test 7 - Nested: ${t7 === "admin" ? "✅" : "❌"}`);
+  test("negative zero", () => {
+    const result = match(-0)(-0, "negative zero")(0, "zero")(_, "other");
+    expect(result).toBe("negative zero");
+  });
 
-// Test 8: First match wins
+  test("missing property in object", () => {
+    const result = match({ a: 1 })({ a: 1, b: "$x" }, (b) => `b=${b.x}`)(
+      { a: 1 },
+      "matched"
+    )(_, "not matched");
+    expect(result).toBe("b=undefined");
+  });
 
-let counter = 0;
+  test("wildcards in nested objects", () => {
+    const result = match({ a: { b: { c: 123 } } })(
+      { a: { b: { c: _ } } },
+      "matched"
+    )(_, "not matched");
+    expect(result).toBe("matched");
+  });
 
-const t8 = match(1)(1, () => {
-  counter++;
-  return "first";
-})(1, () => {
-  counter++;
-  return "second";
-})(_, "default");
+  test("guard returns falsy but not false", () => {
+    const result = match(5)(
+      (x) => x > 10 && x,
+      "big number"
+    )((x) => x <= 10, "small")(_, "other");
+    expect(result).toBe("small");
+  });
 
-console.log(
-  `Test 8 - First wins: ${t8 === "first" && counter === 1 ? "✅" : "❌"}`
-);
+  test("handler as direct primitive value", () => {
+    const result = match(1)(1, 42)(2, 84)(_, 0);
+    expect(result).toBe(42);
+  });
 
-// Test 9: Wildcard como default
+  test("deeply nested object destructuring", () => {
+    const data = {
+      user: {
+        profile: {
+          address: {
+            city: "Madrid",
+          },
+        },
+      },
+    };
+    const result = match(data)(
+      { user: { profile: { address: { city: "$c" } } } },
+      (b) => b.c
+    )(_, "no match");
+    expect(result).toBe("Madrid");
+  });
 
-const t9 = match(999)(1, "uno")(2, "dos")(_, "default");
+  test("array with different length doesn't match", () => {
+    const result = match([1, 2])([1, 2, 3], "match")([1, 2], "exact")(
+      _,
+      "other"
+    );
+    expect(result).toBe("exact");
+  });
 
-console.log(`Test 9 - Wildcard default: ${t9 === "default" ? "✅" : "❌"}`);
+  test("mixed wildcards in arrays", () => {
+    const result = match([1, 2, 3, 4])([1, _, 3, _], "matched")(_, "not");
+    expect(result).toBe("matched");
+  });
 
-// Test 10: Sin default (retorna matcher con conversión)
+  test("symbols as values", () => {
+    const sym = Symbol("test");
+    const result = match(sym)(sym, "matched")(_, "not matched");
+    expect(result).toBe("matched");
+  });
 
-const t10 = match(1)(2, "dos")(3, "tres")(_, undefined);
+  test("multiple guards", () => {
+    const result = match(25)(
+      (x) => x > 100,
+      "very high"
+    )(
+      (x) => x > 50,
+      "high"
+    )((x) => x > 20, "medium")(_, "low");
+    expect(result).toBe("medium");
+  });
+});
 
-console.log(`Test 10 - Sin match: ${t10 === undefined ? "✅" : "❌"}`);
+describe("match - Type Coercion", () => {
+  test("toString conversion", () => {
+    const result = match(42)(42, "matched")(_, "not matched");
+    expect(String(result)).toBe("matched");
+  });
 
-// Test 11: String patterns
+  test("valueOf conversion", () => {
+    const result = match(1)(1, 100)(_, 0);
+    expect(result.valueOf()).toBe(100);
+  });
 
-const t11 = match("hello")("world", "mundo")("hello", "hola")(_, "otro");
-
-console.log(`Test 11 - Strings: ${t11 === "hola" ? "✅" : "❌"}`);
-
-// Test 12: null/undefined
-
-const t12 = match(null)(null, "es null")(undefined, "es undefined")(_, "otro");
-
-console.log(`Test 12 - null: ${t12 === "es null" ? "✅" : "❌"}`);
-
-// Test 13: Guards en objetos
-
-const t13 = match({ score: 85 })({ score: (s) => s >= 90 }, "excelente")(
-  { score: (s) => s >= 70 },
-  "aprobado"
-)(_, "reprobado");
-
-console.log(`Test 13 - Guards en props: ${t13 === "aprobado" ? "✅" : "❌"}`);
-
-// Test 14: Inline en funciones
-
-const classify = (edad) =>
-  match(edad)((x) => x >= 18, "mayor")((x) => x >= 13, "adolescente")(
-    _,
-    "niño"
-  );
-
-const t14 = classify(15);
-
-console.log(
-  `Test 14 - Inline function: ${t14 === "adolescente" ? "✅" : "❌"}`
-);
-
-// Test 15: State machine
-
-const nextState = (state, event) =>
-  match({ state, event })({ state: "idle", event: "start" }, "loading")(
-    { state: "loading", event: "success" },
-    "ready"
-  )({ state: _, event: "reset" }, "idle")(_, state);
-
-const t15 = nextState("idle", "start");
-
-console.log(`Test 15 - State machine: ${t15 === "loading" ? "✅" : "❌"}`);
-
-console.log("\n✨ Clean syntax tests completados!");
+  test("template literal coercion", () => {
+    const result = match(1)(1, "success")(_, "fail");
+    expect(`Result: ${result}`).toBe("Result: success");
+  });
+});
