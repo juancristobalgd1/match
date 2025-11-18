@@ -368,31 +368,3 @@ MIT © Juan Cristobal
 ## Contribute
 
 Issues and PRs welcome on [GitHub](https://github.com/juancristobalgd1/match)
-
-```js
-const user = { role: "admin", level: 5 };
-match(user, [
-  [{ role: "admin", level: (l) => l > 5 }, "Senior Admin"],
-  [{ role: "admin" }, "Admin"],
-  [{ role: "user", level: (l) => l > 3 }, "Advanced User"],
-  ["default", "Regular User"],
-]);
-
-match(value, [
-  { type: "user", name: "$nombre" }, (name) => `Hola ${name}`,
-  { type: "admin" , () => "Admin"},
-  {_, "Default"}
-]);
-
-match(value)({ type: "user", name: "$nombre" }, ({ name }) => `Hola ${name}`)(
-  { type: "admin" },
-  "Admin"
-)(_, "Default");
-
-// o
-
-match(value)
-  .with({ type: "user", name: P.string }, ({ name }) => `Hola ${name}`)
-  .with({ type: "admin" }, () => "Admin")
-  .otherwise(() => "Default");
-```
