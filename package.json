@@ -1,13 +1,15 @@
 {
   "name": "match",
   "version": "1.0.0",
+  "type": "module",
   "description": "The most elegant and lightweight pattern matching in pure JavaScript · < 1 KB · 0 deps",
   "main": "dist/match.min.js",
   "module": "src/match.js",
   "types": "match.d.ts",
   "files": ["dist/", "src/", "match.d.ts"],
   "scripts": {
-    "build": "terser src/match.js -c -m -o dist/match.min.js"
+    "build": "terser src/match.js -c -m -o dist/match.min.js",
+    "test": "node test/match.test.js"
   },
   "keywords": [
     "pattern-matching",
