@@ -2,11 +2,17 @@
   "name": "match",
   "version": "1.0.0",
   "description": "The most elegant and lightweight pattern matching in pure JavaScript · < 1 KB · 0 deps",
+  "type": "module",
   "main": "dist/match.min.js",
   "module": "src/match.js",
-  "types": "match.d.ts",
-  "files": ["dist/", "src/", "match.d.ts"],
+  "types": "src/match.d.ts",
+  "files": [
+    "dist/",
+    "src/",
+    "match.d.ts"
+  ],
   "scripts": {
+    "test": "node test/match.test.js",
     "build": "terser src/match.js -c -m -o dist/match.min.js"
   },
   "keywords": [
@@ -20,5 +26,8 @@
   "author": "Juan Cristobal",
   "license": "MIT",
   "repository": "https://github.com/juancristobalgd1/match",
-  "devDependencies": { "terser": "^5.31.0" }
+  "devDependencies": {
+    "terser": "^5.31.0",
+    "typescript": "^5.9.3"
+  }
 }
