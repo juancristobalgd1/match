@@ -6,29 +6,69 @@ export const match = (value) => {
   let matched = false;
   let result = undefined;
 
-  return {
-    when(pattern, handler) {
-      if (matched) return this;
+  // Función matcher que se puede llamar directamente: match(x)(pattern, handler)
+  const matcher = (pattern, handler) => {
+    const bindings = {};
 
-      const bindings = {};
-      const matches = checkMatch(value, pattern, bindings);
-
-      if (matches) {
-        matched = true;
-        result = typeof handler === "function"
-          ? handler(bindings, value)
-          : handler;
-      }
-      return this;
-    },
-
-    else(handler) {
-      if (!matched) {
-        result = typeof handler === "function" ? handler(value) : handler;
-      }
-      return result;
+    // Si ya hubo un match previo, ignorar el resto
+    if (matched) {
+      // Si el patrón es wildcard (_), retornar el resultado (caso final)
+      if (pattern === _) return result;
+      // Sino, seguir encadenando (ignorar patrones subsecuentes)
+      return matcher;
     }
+
+    const matches = checkMatch(value, pattern, bindings);
+
+    if (matches) {
+      matched = true;
+      result = typeof handler === "function"
+        ? handler(bindings, value)
+        : handler;
+
+      // Si el pattern es wildcard, es el caso default, retornar resultado
+      if (pattern === _) {
+        return result;
+      }
+    }
+
+    // No hay match aún, retornar matcher para encadenar
+    return matcher;
   };
+
+  // Permitir acceso directo al resultado mediante conversión
+  matcher.valueOf = () => result;
+  matcher.toString = () => String(result);
+  matcher[Symbol.toPrimitive] = (hint) => {
+    if (hint === 'number') return Number(result);
+    if (hint === 'string') return String(result);
+    return result;
+  };
+
+  // API legacy .when()/.else() para compatibilidad
+  matcher.when = function(pattern, handler) {
+    if (matched) return this;
+
+    const bindings = {};
+    const matches = checkMatch(value, pattern, bindings);
+
+    if (matches) {
+      matched = true;
+      result = typeof handler === "function"
+        ? handler(bindings, value)
+        : handler;
+    }
+    return this;
+  };
+
+  matcher.else = function(handler) {
+    if (!matched) {
+      result = typeof handler === "function" ? handler(value) : handler;
+    }
+    return result;
+  };
+
+  return matcher;
 };
 
 // Función principal de matching

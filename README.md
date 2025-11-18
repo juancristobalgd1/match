@@ -1,12 +1,12 @@
 # match
 
-**Pattern matching elegante y ligero en JavaScript puro**
+**La sintaxis más limpia de pattern matching en JavaScript puro**
 
-- ✨ Sintaxis limpia e intuitiva
-- 🎯 Destructuring con `$variable`
-- 🔥 Wildcards `_` para cualquier valor
-- 🛡️ Type-safe con TypeScript
-- 📦 < 1 KB · 0 dependencias
+- ✨ **Sintaxis ultra-limpia** sin `.when()`
+- 🎯 **Destructuring** con `$variable`
+- 🔥 **Wildcards** `_` para cualquier valor
+- 🛡️ **Type-safe** con TypeScript
+- 📦 **< 1 KB** · 0 dependencias
 - ⚡ Rendimiento óptimo
 
 ## Instalación
@@ -15,217 +15,228 @@
 npm install match-pro
 ```
 
-## Uso básico
+## 🚀 Sintaxis Ultra Limpia (Recomendada)
 
 ```javascript
 import { match, _ } from "match-pro";
 
-// Matching de números
-const result = match(2)
-  .when(1, "uno")
-  .when(2, "dos")
-  .when(3, "tres")
-  .else("otro");
-// => "dos"
+const user = { name: "Ana", role: "admin" };
 
-// Con wildcard
-const result2 = match(999)
-  .when(1, "uno")
-  .when(_, "cualquier cosa")
-  .else("nunca");
-// => "cualquier cosa"
+// ✅ Super limpia - sin .when()
+const result = match(user)
+  ({ role: "admin", name: "$n" }, b => `👑 Hola jefe ${b.n}!`)
+  ({ role: "user", name: "$n" }, b => `👋 Hola ${b.n}`)
+  (_, "👻 Invitado");
+
+// => "👑 Hola jefe Ana!"
 ```
 
-## Características principales
+## Comparación de sintaxis
 
-### 1️⃣ Matching de objetos (parcial)
+### Sintaxis limpia (recomendada)
+```javascript
+match(value)
+  (pattern1, handler1)
+  (pattern2, handler2)
+  (_, default)
+```
 
+### Sintaxis clásica (también soportada)
+```javascript
+match(value)
+  .when(pattern1, handler1)
+  .when(pattern2, handler2)
+  .else(default)
+```
+
+## Ejemplos rápidos
+
+### 1️⃣ Números
+```javascript
+match(2)
+  (1, "uno")
+  (2, "dos")
+  (3, "tres")
+  (_, "otro")
+// => "dos"
+```
+
+### 2️⃣ Destructuring
 ```javascript
 const user = { name: "Ana", role: "admin", age: 28 };
 
 match(user)
-  .when({ role: "admin" }, "Eres admin")
-  .when({ role: "user" }, "Usuario normal")
-  .else("Invitado");
-// => "Eres admin"
-```
-
-### 2️⃣ Destructuring con `$variable`
-
-```javascript
-match(user)
-  .when({ name: "$nombre", role: "admin" }, (b) => `Hola jefe ${b.nombre}`)
-  .when({ name: "$nombre" }, (b) => `Hola ${b.nombre}`)
-  .else("Anónimo");
+  ({ name: "$nombre", role: "admin" }, b => `Hola jefe ${b.nombre}`)
+  ({ name: "$nombre" }, b => `Hola ${b.nombre}`)
+  (_, "Anónimo")
 // => "Hola jefe Ana"
 ```
 
-### 3️⃣ Arrays/Tuplas con wildcards
-
+### 3️⃣ Arrays/Tuplas
 ```javascript
 match([1, 999, 3])
-  .when([1, _, 3], "Primero y último coinciden")
-  .when([_, 2, _], "Medio es 2")
-  .else("Otro");
+  ([1, _, 3], "Primero y último coinciden")
+  ([_, 2, _], "Medio es 2")
+  (_, "Otro")
 // => "Primero y último coinciden"
 ```
 
-### 4️⃣ Guards (funciones)
-
+### 4️⃣ Guards (predicados)
 ```javascript
 match(17)
-  .when((x) => x >= 18, "Mayor de edad")
-  .when((x) => x >= 13, "Adolescente")
-  .else("Niño");
-// => "Adolescente"
+  (x => x >= 18, "🔞 Mayor de edad")
+  (x => x >= 13, "👦 Adolescente")
+  (_, "👶 Niño")
+// => "👦 Adolescente"
 ```
 
-### 5️⃣ Destructuring + lógica combinada
-
+### 5️⃣ Redux Actions
 ```javascript
-match({ age: 25, country: "ES" })
-  .when({ age: "$edad", country: "ES" }, (b) => b.edad >= 18 ? "Mayor" : "Menor")
-  .else("Extranjero");
-// => "Mayor"
+const action = {
+  type: "ADD_TODO",
+  payload: { text: "Aprender match" }
+};
+
+match(action)
+  ({ type: "ADD_TODO", payload: { text: "$t" } }, b => `➕ ${b.t}`)
+  ({ type: "TOGGLE_TODO", payload: { id: "$id" } }, b => `🔄 #${b.id}`)
+  ({ type: "DELETE_TODO", payload: { id: "$id" } }, b => `🗑️  #${b.id}`)
+  (_, "❓ Acción desconocida")
+// => "➕ Aprender match"
 ```
 
 ## Casos de uso reales
 
-### Redux/Actions
-
+### State Machine
 ```javascript
-const action = {
-  type: "ADD_TODO",
-  payload: { text: "Aprender match", done: false }
-};
+const nextState = (state, event) => match({ state, event })
+  ({ state: "idle", event: "start" }, "loading")
+  ({ state: "loading", event: "success" }, "ready")
+  ({ state: "loading", event: "error" }, "error")
+  ({ state: "error", event: "retry" }, "loading")
+  ({ state: _, event: "reset" }, "idle")
+  (_, state);
 
-match(action)
-  .when({ type: "ADD_TODO", payload: { text: "$t" } },
-    (b) => `Añadido: ${b.t}`)
-  .when({ type: "TOGGLE_TODO", payload: { id: "$id" } },
-    (b) => `Toggle ${b.id}`)
-  .else("Acción desconocida");
-// => "Añadido: Aprender match"
+nextState("idle", "start") // => "loading"
 ```
 
 ### Validación de formularios
-
 ```javascript
-match(formData)
-  .when({ email: "$e", password: "$p" }, (b) =>
-    validateLogin(b.e, b.p))
-  .when({ email: "$e" }, () =>
-    "Falta contraseña")
-  .else("Datos incompletos");
+const validate = (form) => match(form)
+  ({ email: "$e", password: "$p" }, b => validateLogin(b.e, b.p))
+  ({ email: "$e" }, () => "Falta contraseña")
+  (_, "Datos incompletos");
 ```
 
 ### Enrutamiento
-
 ```javascript
-match(request)
-  .when({ method: "GET", path: "/users" }, () => listUsers())
-  .when({ method: "GET", path: "/users/$id" }, (b) => getUser(b.id))
-  .when({ method: "POST", path: "/users" }, () => createUser())
-  .else(() => notFound());
+const route = (req) => match(req)
+  ({ method: "GET", path: "/users" }, () => listUsers())
+  ({ method: "GET", path: "/users/$id" }, b => getUser(b.id))
+  ({ method: "POST", path: "/users" }, () => createUser())
+  (_, () => notFound());
 ```
 
-### State machines
-
+### Clasificación inline
 ```javascript
-match({ state: currentState, event: userEvent })
-  .when({ state: "idle", event: "start" }, "loading")
-  .when({ state: "loading", event: "success" }, "ready")
-  .when({ state: "loading", event: "error" }, "failed")
-  .when({ state: _, event: "reset" }, "idle")
-  .else(currentState);
+const classify = edad => match(edad)
+  (x => x >= 18, "Mayor")
+  (x => x >= 13, "Adolescente")
+  (_, "Niño");
+
+[12, 15, 20].map(classify)
+// => ["Niño", "Adolescente", "Mayor"]
 ```
 
 ## Características avanzadas
 
 ### Múltiples capturas
-
 ```javascript
 match({ name: "Bob", age: 30, city: "Madrid" })
-  .when({ name: "$n", age: "$a", city: "$c" },
-    (b) => `${b.n}, ${b.a} años, ${b.c}`)
-  .else("N/A");
+  ({ name: "$n", age: "$a", city: "$c" },
+    b => `${b.n}, ${b.a} años, ${b.c}`)
+  (_, "N/A")
 // => "Bob, 30 años, Madrid"
 ```
 
 ### Objetos anidados
-
 ```javascript
-match({ user: { name: "Ana", role: "admin" } })
-  .when({ user: { role: "admin" } }, "Admin detectado")
-  .else("No admin");
-// => "Admin detectado"
+match({ user: { profile: { role: "admin" } } })
+  ({ user: { profile: { role: "admin" } } }, "🔐 Admin")
+  ({ user: { profile: { role: "user" } } }, "👤 User")
+  (_, "❌ Sin acceso")
+// => "🔐 Admin"
 ```
 
 ### Wildcards en objetos
-
 ```javascript
-match({ a: 1, b: 2, c: 3 })
-  .when({ a: 1, b: _, c: _ }, "a es 1, resto cualquier cosa")
-  .else("No match");
-// => "a es 1, resto cualquier cosa"
+match({ role: "admin", perms: ["read", "write"] })
+  ({ role: "admin", perms: _ }, "Admin con permisos")
+  ({ role: "admin" }, "Admin sin permisos")
+  (_, "No admin")
+// => "Admin con permisos"
 ```
 
 ### Guards en propiedades
-
 ```javascript
-match({ score: 85, name: "Ana" })
-  .when({ score: (s) => s >= 90 }, "Excelente")
-  .when({ score: (s) => s >= 70 }, "Aprobado")
-  .else("Reprobado");
-// => "Aprobado"
+match({ score: 85 })
+  ({ score: s => s >= 90 }, "🏆 Excelente")
+  ({ score: s => s >= 70 }, "✅ Aprobado")
+  ({ score: s => s >= 60 }, "⚠️  Suficiente")
+  (_, "❌ Reprobado")
+// => "✅ Aprobado"
 ```
 
 ## API Reference
 
-### `match(value)`
-Crea una nueva expresión de pattern matching.
+### Sintaxis limpia
+```javascript
+match(value)
+  (pattern, handler)
+  (pattern, handler)
+  (_, default)  // ← Siempre terminar con wildcard
+```
 
-### `.when(pattern, handler)`
-Define un caso a evaluar.
+**Pattern**: Puede ser:
+- Valor primitivo: `1`, `"hello"`, `null`
+- Objeto: `{ role: "admin" }`
+- Array: `[1, _, 3]`
+- Función guard: `x => x >= 18`
+- Wildcard: `_`
 
-**Parámetros:**
-- `pattern`: Valor, objeto, array, función guard, o wildcard `_`
-- `handler`: Valor a retornar o función `(bindings, value) => result`
+**Handler**: Puede ser:
+- Valor directo: `"resultado"`
+- Función: `(bindings, value) => ...`
 
-**Retorna:** El objeto match para encadenar más `.when()`
-
-### `.else(handler)`
-Define el caso por defecto si ninguno hace match.
-
-**Parámetros:**
-- `handler`: Valor a retornar o función `(value) => result`
-
-**Retorna:** El resultado final del matching
+### Sintaxis clásica (legacy)
+```javascript
+match(value)
+  .when(pattern, handler)
+  .else(default)
+```
 
 ### Wildcard `_`
 Symbol especial que hace match con cualquier valor.
 
 ```javascript
-import { _ } from "match-pro";
-
-match(value)
-  .when(_, "Cualquier cosa")
-  .else("Nunca se ejecuta");
+match([1, 999, 3])
+  ([1, _, 3], "match")  // _ coincide con 999
+  (_, "default")        // _ coincide con todo
 ```
 
 ### Captura `"$variable"`
-Sintaxis especial para capturar valores en el pattern.
+Extrae valores del patrón.
 
 ```javascript
-match({ name: "Ana" })
-  .when({ name: "$n" }, (b) => b.n) // b.n === "Ana"
-  .else("No match");
+match({ name: "Ana", age: 28 })
+  ({ name: "$n", age: "$a" }, b => `${b.n} tiene ${b.a} años`)
+  (_, "No match")
+// Bindings: { n: "Ana", a: 28 }
 ```
 
 ## Comparación con switch/if-else
 
-### ❌ Con switch (verboso, repetitivo)
-
+### ❌ Con switch (verboso)
 ```javascript
 let result;
 switch(user.role) {
@@ -233,39 +244,56 @@ switch(user.role) {
     result = `Hola ${user.name}`;
     break;
   case "user":
-    result = "Hola usuario";
+    result = "Usuario normal";
     break;
   default:
     result = "Invitado";
 }
 ```
 
-### ✅ Con match (limpio, expresivo)
-
+### ✅ Con match (elegante)
 ```javascript
 const result = match(user)
-  .when({ role: "admin", name: "$n" }, (b) => `Hola ${b.n}`)
-  .when({ role: "user" }, "Hola usuario")
-  .else("Invitado");
+  ({ role: "admin", name: "$n" }, b => `Hola ${b.n}`)
+  ({ role: "user" }, "Usuario normal")
+  (_, "Invitado");
 ```
 
 ## TypeScript
 
-La librería incluye tipos completos:
+Tipos completos incluidos:
 
 ```typescript
 import { match, _, Wildcard, Bindings } from "match-pro";
 
 const result: string = match<User>(user)
-  .when({ role: "admin" }, "Admin")
-  .else("User");
+  ({ role: "admin" }, "Admin")
+  ({ role: "user" }, "User")
+  (_, "Guest");
 ```
+
+## ¿Por qué usar match?
+
+✅ **Más expresivo** que switch/if-else
+✅ **Pattern matching** real con destructuring
+✅ **Inmutable** - retorna valores directamente
+✅ **Type-safe** con TypeScript
+✅ **Tiny** - < 1 KB minificado
+✅ **Zero deps** - sin dependencias
+✅ **Flexible** - dos sintaxis disponibles
 
 ## Rendimiento
 
-- Zero-copy: no clona objetos
-- Lazy evaluation: para en el primer match
-- Minimal overhead: ~800 bytes minified + gzip
+- **Zero-copy**: no clona objetos
+- **Lazy evaluation**: para en el primer match
+- **Minimal overhead**: ~800 bytes minified + gzip
+
+## Ejemplos completos
+
+Mira la carpeta `examples/` para ver:
+- `clean-syntax.js` - Sintaxis limpia completa
+- `showcase.js` - Todos los casos de uso
+- `todo-app.js` - App real usando match
 
 ## Licencia
 
