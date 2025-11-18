@@ -1,12 +1,14 @@
 {
   "compilerOptions": {
     "strict": true,
+    "target": "ES2015",
+    "module": "ESNext",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "ignoreDeprecations": "6.0",
-    "lib": ["es2015"]
+    "lib": ["ES2015"],
+    "noEmit": true
   },
-  "include": ["examples/**/*"]
+  "include": ["src/**/*", "examples/**/*"]
 }
