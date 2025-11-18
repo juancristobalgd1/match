@@ -237,6 +237,7 @@ match(value)
   (_, default)  // ← Always end with wildcard
 
 ```
+
 **Pattern**: Can be:
 
 - Primitive value: `1`, `"hello"`, `null`
@@ -256,6 +257,7 @@ match(value)
 - Function: `(bindings, value) => ...`
 
 ### Wildcard `_`
+
 Special symbol that matches any value.
 
 ```javascript
@@ -279,6 +281,7 @@ match({ name: "Ana", age: 28 })(
 
 // Bindings: { n: "Ana", a: 28 }
 ```
+
 ## Comparison with switch/if-else
 
 ### ❌ With switch (verbose)
@@ -323,6 +326,7 @@ const result: string = match<User>(user)({ role: "admin" }, "Admin")(
   "User"
 )(_, "Guest");
 ```
+
 ## Why use match?
 
 ✅ **More expressive** than switch/if-else
@@ -348,6 +352,7 @@ const result: string = match<User>(user)({ role: "admin" }, "Admin")(
 - **Minimal overhead**: ~800 bytes minified + gzip
 
 ## Complete examples
+
 Check out the `examples/` folder to see:
 
 - `clean-syntax.js` - Complete clean syntax
@@ -363,3 +368,31 @@ MIT © Juan Cristobal
 ## Contribute
 
 Issues and PRs welcome on [GitHub](https://github.com/juancristobalgd1/match)
+
+```js
+const user = { role: "admin", level: 5 };
+match(user, [
+  [{ role: "admin", level: (l) => l > 5 }, "Senior Admin"],
+  [{ role: "admin" }, "Admin"],
+  [{ role: "user", level: (l) => l > 3 }, "Advanced User"],
+  ["default", "Regular User"],
+]);
+
+match(value, [
+  { type: "user", name: "$nombre" }, (name) => `Hola ${name}`,
+  { type: "admin" , () => "Admin"},
+  {_, "Default"}
+]);
+
+match(value)({ type: "user", name: "$nombre" }, ({ name }) => `Hola ${name}`)(
+  { type: "admin" },
+  "Admin"
+)(_, "Default");
+
+// o
+
+match(value)
+  .with({ type: "user", name: P.string }, ({ name }) => `Hola ${name}`)
+  .with({ type: "admin" }, () => "Admin")
+  .otherwise(() => "Default");
+```
