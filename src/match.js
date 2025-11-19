@@ -1,7 +1,7 @@
 const _ = Symbol.for("m-wild");
 const DEFAULT = Symbol.for("m-def");
 
-export { _, DEFAULT as default };
+export { _, DEFAULT as def };
 
 export const match = (value) => {
   let matched = false;
