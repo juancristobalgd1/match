@@ -1,5 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { match, _ } from "../src/match.js";
+import def from "../src/match.js";
 
 describe("match - Clean Syntax", () => {
   test("basic numbers", () => {
@@ -259,5 +260,101 @@ describe("match - Type Coercion", () => {
   test("template literal coercion", () => {
     const result = match(1)(1, "success")(_, "fail");
     expect(`Result: ${result}`).toBe("Result: success");
+  });
+});
+
+describe("match - DEFAULT symbol and exhaustive mode", () => {
+  test("DEFAULT works like wildcard", () => {
+    const result = match(42)(1, "one")(2, "two")(def, "default");
+    expect(result).toBe("default");
+  });
+
+  test("DEFAULT with destructuring", () => {
+    const user = { name: "John", age: 30 };
+    const result = match(user)(
+      { name: "Jane" },
+      "Jane"
+    )(def, "someone else");
+    expect(result).toBe("someone else");
+  });
+
+  test("DEFAULT in object properties", () => {
+    const result = match({ role: "admin", perms: ["read"] })(
+      { role: "admin", perms: def },
+      "admin with perms"
+    )(def, "other");
+    expect(result).toBe("admin with perms");
+  });
+
+  test("DEFAULT in arrays", () => {
+    const result = match([1, 2, 3])([1, def, 3], "matched")(def, "default");
+    expect(result).toBe("matched");
+  });
+
+  test("exhaustive mode throws when no match and no default", () => {
+    expect(() => {
+      match(42).exhaustive()(1, "one")(2, "two").valueOf();
+    }).toThrow("No match");
+  });
+
+  test("exhaustive mode with wildcard doesn't throw", () => {
+    const result = match(42).exhaustive()(1, "one")(2, "two")(_, "default");
+    expect(result).toBe("default");
+  });
+
+  test("exhaustive mode with DEFAULT doesn't throw", () => {
+    const result = match(42).exhaustive()(1, "one")(2, "two")(def, "default");
+    expect(result).toBe("default");
+  });
+
+  test("exhaustive mode with match doesn't throw", () => {
+    const result = match(1).exhaustive()(1, "one")(2, "two");
+    expect(result.valueOf()).toBe("one");
+  });
+
+  test("exhaustive mode error includes value", () => {
+    expect(() => {
+      match({ x: 42 }).exhaustive()({ x: 1 }, "one").valueOf();
+    }).toThrow('{"x":42}');
+  });
+
+  test("exhaustive mode with template literal coercion", () => {
+    expect(() => {
+      const result = match(42).exhaustive()(1, "one")(2, "two");
+      return `Result: ${result}`;
+    }).toThrow("No match");
+  });
+
+  test("exhaustive mode with toString", () => {
+    expect(() => {
+      const result = match(42).exhaustive()(1, "one")(2, "two");
+      return String(result);
+    }).toThrow("No match");
+  });
+
+  test("can mix _ and DEFAULT in same match", () => {
+    const result = match([1, 2, 3])([1, _, def], "matched")(def, "default");
+    expect(result).toBe("matched");
+  });
+
+  test("DEFAULT and _ are interchangeable", () => {
+    const result1 = match(42)(1, "one")(_, "wildcard");
+    const result2 = match(42)(1, "one")(def, "default");
+    expect(result1).toBe("wildcard");
+    expect(result2).toBe("default");
+  });
+
+  test("exhaustive can be chained before patterns", () => {
+    const result = match(1).exhaustive()(1, "matched")(def, "default");
+    expect(result.valueOf()).toBe("matched");
+  });
+
+  test("exhaustive mode with complex object", () => {
+    const data = { user: { role: "admin" } };
+    const result = match(data)
+      .exhaustive()
+      ({ user: { role: "admin" } }, "admin")
+      (def, "other");
+    expect(result).toBe("admin");
   });
 });

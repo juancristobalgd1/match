@@ -1,6 +1,10 @@
 export declare const _: unique symbol;
+export declare const DEFAULT: unique symbol;
 
 export type Wildcard = typeof _;
+export type Default = typeof DEFAULT;
+
+export { DEFAULT as default };
 
 // Types for bindings captured with $variable
 
@@ -17,6 +21,10 @@ export interface Matcher<T, R = any> {
   // Allow direct calls: (pattern, handler)
 
   <U = R>(pattern: any, handler: Handler<T, U>): Matcher<T, U>;
+
+  // Enable exhaustive mode (throws if no match and no default)
+
+  exhaustive(): Matcher<T, R>;
 
   // Type conversion to obtain the result
 
