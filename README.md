@@ -5,8 +5,9 @@
 - ✨ **Clean syntax** - Rust/OCaml-inspired arrays
 - 🎯 **Destructuring** with `$variable`
 - 🔥 **Wildcards** `_` for any value
+- 🎨 **OR patterns** - Match multiple values: `or(1, 2, 3)`
 - 🛡️ **Type-safe** with TypeScript
-- 📦 **< 1 KB** (830 bytes) · 0 dependencies
+- 📦 **< 1 KB** (883 bytes) · 0 dependencies
 - ⚡ Optimal performance
 
 ## Installation
@@ -236,6 +237,45 @@ match({ score: 85 })(
 // => "✅ Passed"
 ```
 
+### OR patterns
+
+Match multiple values with the `or()` helper:
+
+```javascript
+import { match, _, or } from "match-pro";
+
+// HTTP Status codes
+const getStatusType = (code) =>
+  match(code)(
+    [or(200, 201, 204), "success"],
+    [or(400, 401, 403, 404), "client error"],
+    [or(500, 502, 503), "server error"],
+    [_, "unknown"]
+  );
+
+getStatusType(200);  // "success"
+getStatusType(404);  // "client error"
+getStatusType(500);  // "server error"
+```
+
+Works with any type:
+
+```javascript
+// Strings
+match("hello")(
+  [or("hi", "hello", "hey"), "greeting"],
+  [or("bye", "goodbye"), "farewell"],
+  [_, "other"]
+);
+
+// In object patterns
+match({ status: 404 })(
+  [{ status: or(200, 201) }, "success"],
+  [{ status: or(400, 404, 500) }, "error"],
+  [_, "unknown"]
+);
+```
+
 ### Exhaustive matching
 
 ```javascript
@@ -299,6 +339,7 @@ match(value)(
 - Object: `{ role: "admin" }`
 - Array: `[1, _, 3]`
 - Guard function: `x => x >= 18`
+- OR pattern: `or(1, 2, 3)` - matches any of the values
 - Wildcard: `_` or `def`
 
 **Handler**: Can be:
@@ -336,6 +377,27 @@ match({ name: "Ana", age: 28 })(
   [_, "No match"]
 );
 // Bindings: { n: "Ana", a: 28 }
+```
+
+### `or()` helper
+
+Match multiple values with a single pattern.
+
+```javascript
+import { match, or } from "match-pro";
+
+match(statusCode)(
+  [or(200, 201, 204), "success"],
+  [or(400, 404), "client error"],
+  [or(500, 502, 503), "server error"],
+  [_, "unknown"]
+);
+
+// Can be nested in objects
+match({ role: userRole })(
+  [{ role: or("admin", "owner") }, "full access"],
+  [{ role: "user" }, "limited access"]
+);
 ```
 
 ### `.exhaustive()` method
@@ -392,12 +454,19 @@ const result = match(user)(
 All types included:
 
 ```typescript
-import { match, _, Wildcard, Bindings, def } from "match-pro";
+import { match, _, Wildcard, Bindings, def, or } from "match-pro";
 
 const result: string = match<User>(user)(
   [{ role: "admin" }, "Admin"],
   [{ role: "user" }, "User"],
   [_, "Guest"]
+) as string;
+
+// With OR patterns
+const statusType = match<number>(code)(
+  [or(200, 201, 204), "success"],
+  [or(400, 404), "client error"],
+  [_, "unknown"]
 ) as string;
 
 // With exhaustive mode
@@ -430,7 +499,9 @@ const message: string = match<Status>(status)(
 
 ✅ **DEFAULT symbol** - more readable than `_`
 
-✅ **Tiny** - < 1 KB minified (830 bytes!)
+✅ **OR patterns** - `or(1, 2, 3)` for multiple values
+
+✅ **Tiny** - < 1 KB minified (883 bytes!)
 
 ✅ **Zero deps** - no dependencies
 
@@ -440,7 +511,7 @@ const message: string = match<Status>(status)(
 
 - **Zero-copy**: does not clone objects
 - **Lazy evaluation**: stops at the first match
-- **Minimal overhead**: ~830 bytes minified
+- **Minimal overhead**: ~883 bytes minified
 
 ## Complete examples
 
