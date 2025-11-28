@@ -4,7 +4,7 @@
  * To execute:
  *   npx tsx examples/typescript-example.ts
  */
-import { match, _, Bindings, Matcher } from "../src/match.js";
+import { match, _, Bindings, ExecuteMatch } from "../src/match.js";
 
 // ============================================
 // CUSTOMISED TYPES
@@ -26,78 +26,124 @@ type State = "idle" | "loading" | "ready" | "error";
 type Event = "start" | "success" | "error" | "retry" | "reset";
 
 // ============================================
-// SINTAXIS LIMPIA (Type-safe)
+// CLEAN SYNTAX (Type-safe)
 // ============================================
 
 const user: User = { name: "Ana", role: "admin", age: 28 };
 
-// ✅ El resultado es type-safe: string
+// ✅ Type-safe result: string
+const greeting: string = match(user)(
+  [{ role: "admin", name: "$n" }, (b: Bindings) => `👑 Hola ${b.n}`],
+  [{ role: "user", name: "$n" }, (b: Bindings) => `👋 Hola ${b.n}`],
+  [_, "👻 Invitado"]
+) as string;
 
-const _greeting: Matcher<string> = match(user)(
-  { role: "admin", name: "$n" },
-  (b: Bindings) => `👑 Hola ${b.n}`
-)({ role: "user", name: "$n" }, (b: Bindings) => `👋 Hola ${b.n}`)(
-  _,
-  "👻 Invitado"
-);
+console.log(greeting); // 👑 Hola Ana
 
 // ============================================
 // REDUX ACTIONS (Type-safe)
 // ============================================
 
-const _handleAction = (action: Action): string => {
+const handleAction = (action: Action): string => {
   return match(action)(
-    { type: "ADD_TODO", payload: { text: "$t" } },
-    (b: Bindings) => `➕ Añadido: ${b.t}`
-  )(
-    { type: "TOGGLE_TODO", payload: { id: "$id" } },
-    (b: Bindings) => `🔄 Toggle #${b.id}`
-  )(
-    { type: "DELETE_TODO", payload: { id: "$id" } },
-    (b: Bindings) => `🗑️  Eliminado #${b.id}`
-  )(_, " ❓ Acción desconocida") as unknown as string;
+    [{ type: "ADD_TODO", payload: { text: "$t" } }, (b: Bindings) => `➕ Añadido: ${b.t}`],
+    [{ type: "TOGGLE_TODO", payload: { id: "$id" } }, (b: Bindings) => `🔄 Toggle #${b.id}`],
+    [{ type: "DELETE_TODO", payload: { id: "$id" } }, (b: Bindings) => `🗑️  Eliminado #${b.id}`],
+    [_, "❓ Acción desconocida"]
+  ) as string;
 };
 
-const _action1: Action = { type: "ADD_TODO", payload: { text: "Aprender TS" } };
+const action1: Action = { type: "ADD_TODO", payload: { text: "Aprender TS" } };
+console.log(handleAction(action1)); // ➕ Añadido: Aprender TS
 
-const _action2: Action = { type: "TOGGLE_TODO", payload: { id: 42 } };
+const action2: Action = { type: "TOGGLE_TODO", payload: { id: 42 } };
+console.log(handleAction(action2)); // 🔄 Toggle #42
 
 // ============================================
-
 // STATE MACHINE (Type-safe)
-
 // ============================================
 
-const _nextState = (state: State, event: Event): State =>
+const nextState = (state: State, event: Event): State =>
   match({ state, event })(
-    { state: "idle", event: "start" },
-    "loading" as State
-  )({ state: "loading", event: "success" }, "ready" as State)(
-    { state: "loading", event: "error" },
-    "error" as State
-  )({ state: "error", event: "retry" }, "loading" as State)(
-    { state: _, event: "reset" },
-    "idle" as State
-  )(_, state) as unknown as State;
+    [{ state: "idle", event: "start" }, "loading" as State],
+    [{ state: "loading", event: "success" }, "ready" as State],
+    [{ state: "loading", event: "error" }, "error" as State],
+    [{ state: "error", event: "retry" }, "loading" as State],
+    [{ state: _, event: "reset" }, "idle" as State],
+    [_, state]
+  ) as State;
+
+console.log(nextState("idle", "start")); // loading
+console.log(nextState("loading", "success")); // ready
+console.log(nextState("error", "retry")); // loading
 
 // ============================================
-// GUARDS CON TIPOS
+// GUARDS WITH TYPES
 // ============================================
 
-const _classify = (age: number): string =>
-  match(age)((x: number) => x >= 18, "Mayor")(
-    (x: number) => x >= 13,
-    "Adolescente"
-  )(_, "Niño") as unknown as string;
+const classify = (age: number): string =>
+  match(age)(
+    [(x: number) => x >= 18, "Mayor"],
+    [(x: number) => x >= 13, "Adolescente"],
+    [_, "Niño"]
+  ) as string;
+
+console.log(classify(25)); // Mayor
+console.log(classify(15)); // Adolescente
+console.log(classify(8)); // Niño
 
 // ============================================
 // INLINE TYPE INFERENCE
 // ============================================
 
-// TypeScript infiere el tipo de retorno automáticamente
-
+// TypeScript infers the return type automatically
 const numbers = [1, 2, 3, 4, 5];
 
-const _labels = numbers.map((n) =>
-  match(n)(1, "one")(2, "two")(3, "three")(_, "other")
+const labels = numbers.map((n) =>
+  match(n)(
+    [1, "one"],
+    [2, "two"],
+    [3, "three"],
+    [_, "other"]
+  )
 );
+
+console.log(labels); // ["one", "two", "three", "other", "other"]
+
+// ============================================
+// EXHAUSTIVE MODE
+// ============================================
+
+const getHttpStatus = (code: number): string =>
+  match(code).exhaustive()(
+    [200, "OK"],
+    [201, "Created"],
+    [404, "Not Found"],
+    [500, "Internal Server Error"],
+    [_, "Unknown"]
+  ) as string;
+
+console.log(getHttpStatus(200)); // OK
+console.log(getHttpStatus(999)); // Unknown
+
+// ============================================
+// COMPLEX OBJECT MATCHING
+// ============================================
+
+interface ApiResponse {
+  status: number;
+  data?: any;
+  error?: string;
+}
+
+const handleResponse = (response: ApiResponse): string =>
+  match(response)(
+    [{ status: 200, data: "$d" }, (b: Bindings) => `Success: ${JSON.stringify(b.d)}`],
+    [{ status: (s: number) => s >= 400 && s < 500 }, "Client error"],
+    [{ status: (s: number) => s >= 500 }, "Server error"],
+    [_, "Unknown response"]
+  ) as string;
+
+console.log(handleResponse({ status: 200, data: { id: 1 } })); // Success: {"id":1}
+console.log(handleResponse({ status: 404 })); // Client error
+console.log(handleResponse({ status: 500 })); // Server error

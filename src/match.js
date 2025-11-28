@@ -4,58 +4,42 @@ const DEFAULT = Symbol.for("m-def");
 export { _, DEFAULT as def };
 
 export const match = (value) => {
-  let matched = false;
-  let hasDefault = false;
   let exhaustive = false;
-  let result = undefined;
 
-  const matcher = (pattern, handler) => {
-    const bindings = {};
+  const executeMatch = (...cases) => {
+    let matched = false;
+    let hasDefault = false;
+    let result = undefined;
 
-    if (matched) {
-      if (pattern === _ || pattern === DEFAULT) return result;
-      return matcher;
+    for (const [pattern, handler] of cases) {
+      const bindings = {};
+      const isDefault = pattern === _ || pattern === DEFAULT;
+
+      if (isDefault) hasDefault = true;
+
+      const matches = checkMatch(value, pattern, bindings);
+
+      if (matches) {
+        matched = true;
+        result =
+          typeof handler === "function" ? handler(bindings, value) : handler;
+        break; // First match wins
+      }
     }
 
-    const isDefault = pattern === _ || pattern === DEFAULT;
-    if (isDefault) hasDefault = true;
-
-    const matches = checkMatch(value, pattern, bindings);
-
-    if (matches) {
-      matched = true;
-      result =
-        typeof handler === "function" ? handler(bindings, value) : handler;
-      if (isDefault) return result;
-    }
-
-    return matcher;
-  };
-
-  matcher.exhaustive = () => {
-    exhaustive = true;
-    return matcher;
-  };
-
-  const checkExhaustive = () => {
     if (exhaustive && !(matched || hasDefault)) {
       throw Error("No match: " + JSON.stringify(value));
     }
+
     return result;
   };
 
-  matcher.valueOf = () => checkExhaustive();
-
-  matcher.toString = () => String(checkExhaustive());
-
-  matcher[Symbol.toPrimitive] = (hint) => {
-    const res = checkExhaustive();
-    if (hint === "number") return Number(res);
-    if (hint === "string") return String(res);
-    return res;
+  executeMatch.exhaustive = () => {
+    exhaustive = true;
+    return executeMatch;
   };
 
-  return matcher;
+  return executeMatch;
 };
 
 function checkMatch(value, pattern, bindings) {

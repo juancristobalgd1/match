@@ -4,42 +4,34 @@ export declare const DEFAULT: unique symbol;
 export type Wildcard = typeof _;
 export type Default = typeof DEFAULT;
 
-export { DEFAULT as default };
+export { DEFAULT as def };
 
 // Types for bindings captured with $variable
-
 export type Bindings = Record<string, any>;
 
-// Handler can be a direct value or a function that receives bindings.
-
+// Handler can be a direct value or a function that receives bindings
 export type Handler<T, R> = R | ((bindings: Bindings, value: T) => R);
 
+// A case is a tuple of [pattern, handler]
+export type Case<T, R> = [pattern: any, handler: Handler<T, R>];
+
 // ============================================
-// match(x)(pattern, handler)(pattern, handler)(_, default)
+// match(x)([pattern, handler], [pattern, handler], ...)
+// ============================================
 
-export interface Matcher<T, R = any> {
-  // Allow direct calls: (pattern, handler)
-
-  <U = R>(pattern: any, handler: Handler<T, U>): Matcher<T, U>;
+export interface ExecuteMatch<T> {
+  // Execute match with varargs of cases
+  <R = any>(...cases: Case<T, R>[]): R | undefined;
 
   // Enable exhaustive mode (throws if no match and no default)
-
-  exhaustive(): Matcher<T, R>;
-
-  // Type conversion to obtain the result
-
-  valueOf(): R;
-
-  toString(): string;
-
-  [Symbol.toPrimitive](hint: string): any;
+  exhaustive(): ExecuteMatch<T>;
 }
 
 // ============================================
 // MAIN FUNCTION
 // ============================================
 
-export declare function match<T>(value: T): Matcher<T>;
+export declare function match<T>(value: T): ExecuteMatch<T>;
 
 // ============================================
 // NAMESPACE (for use with <script>)
