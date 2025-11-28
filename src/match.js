@@ -1,6 +1,10 @@
 const _ = Symbol.for("m-wild");
 const DEFAULT = Symbol.for("m-def");
 
+// OR pattern helper: match if value equals any of the patterns
+export const or = (...patterns) => (value) =>
+  patterns.some((p) => Object.is(value, p));
+
 export { _, DEFAULT as def };
 
 export const match = (value) => {

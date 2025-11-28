@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { match, _, def } from "../src/match.js";
+import { match, _, def, or } from "../src/match.js";
 
 describe("match - Clean Syntax", () => {
   test("basic numbers", () => {
@@ -377,5 +377,88 @@ describe("match - DEFAULT symbol and exhaustive mode", () => {
       [def, "other"]
     );
     expect(result).toBe("admin");
+  });
+});
+
+describe("match - OR patterns", () => {
+  test("or with numbers", () => {
+    const result = match(2)(
+      [or(1, 2, 3), "one two or three"],
+      [or(4, 5), "four or five"],
+      [_, "other"]
+    );
+    expect(result).toBe("one two or three");
+  });
+
+  test("or with strings", () => {
+    const result = match("hello")(
+      [or("hi", "hello", "hey"), "greeting"],
+      [or("bye", "goodbye"), "farewell"],
+      [_, "other"]
+    );
+    expect(result).toBe("greeting");
+  });
+
+  test("or with no match", () => {
+    const result = match(10)(
+      [or(1, 2, 3), "matched"],
+      [_, "not matched"]
+    );
+    expect(result).toBe("not matched");
+  });
+
+  test("or with mixed types", () => {
+    const result = match("1")(
+      [or(1, "1", true), "matched"],
+      [_, "not matched"]
+    );
+    expect(result).toBe("matched");
+  });
+
+  test("or with null and undefined", () => {
+    const result1 = match(null)(
+      [or(null, undefined), "nullish"],
+      [_, "other"]
+    );
+    expect(result1).toBe("nullish");
+
+    const result2 = match(undefined)(
+      [or(null, undefined), "nullish"],
+      [_, "other"]
+    );
+    expect(result2).toBe("nullish");
+  });
+
+  test("or with single value", () => {
+    const result = match(42)(
+      [or(42), "matched"],
+      [_, "not matched"]
+    );
+    expect(result).toBe("matched");
+  });
+
+  test("or combined with other patterns", () => {
+    const result = match({ status: 404 })(
+      [{ status: or(200, 201) }, "success"],
+      [{ status: or(400, 404, 500) }, "error"],
+      [_, "unknown"]
+    );
+    expect(result).toBe("error");
+  });
+
+  test("HTTP status codes example", () => {
+    const getStatusType = (code) =>
+      match(code)(
+        [or(200, 201, 204), "success"],
+        [or(400, 401, 403, 404), "client error"],
+        [or(500, 502, 503), "server error"],
+        [_, "unknown"]
+      );
+
+    expect(getStatusType(200)).toBe("success");
+    expect(getStatusType(201)).toBe("success");
+    expect(getStatusType(404)).toBe("client error");
+    expect(getStatusType(500)).toBe("server error");
+    expect(getStatusType(999)).toBe("unknown");
   });
 });

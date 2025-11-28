@@ -4,6 +4,9 @@ export declare const DEFAULT: unique symbol;
 export type Wildcard = typeof _;
 export type Default = typeof DEFAULT;
 
+// OR pattern helper
+export declare function or<T>(...patterns: T[]): (value: T) => boolean;
+
 export { DEFAULT as def };
 
 // Types for bindings captured with $variable
