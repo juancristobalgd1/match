@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { match, _, def, or } from "../src/match.js";
+import { match, _, def, or, throwError, fail, panic } from "../src/match.js";
 
 describe("match - Clean Syntax", () => {
   test("basic numbers", () => {
@@ -460,5 +460,116 @@ describe("match - OR patterns", () => {
     expect(getStatusType(404)).toBe("client error");
     expect(getStatusType(500)).toBe("server error");
     expect(getStatusType(999)).toBe("unknown");
+  });
+});
+
+describe("match - Error helpers (PHP-style)", () => {
+  test("throwError throws error when matched", () => {
+    expect(() => {
+      match(true)(
+        [true, throwError("Something went wrong")],
+        [_, "default"]
+      );
+    }).toThrow("Something went wrong");
+  });
+
+  test("throwError doesn't throw if not matched", () => {
+    const result = match(false)(
+      [true, throwError("Should not throw")],
+      [_, "default"]
+    );
+    expect(result).toBe("default");
+  });
+
+  test("fail helper (alias)", () => {
+    expect(() => {
+      match("invalid")(
+        ["invalid", fail("Invalid input")],
+        [_, "valid"]
+      );
+    }).toThrow("Invalid input");
+  });
+
+  test("panic helper (Rust-style)", () => {
+    expect(() => {
+      match(null)(
+        [null, panic("Unexpected null value")],
+        [_, "ok"]
+      );
+    }).toThrow("Unexpected null value");
+  });
+
+  test("PHP-style redirector example", () => {
+    let cyclic = 0;
+    const isValidURL = (url) => /^https?:\/\/.+/.test(url);
+
+    const redirector = (page = null, maxRedirects = 10) =>
+      match(true)(
+        [page === null, () => "reload"],
+        [!isValidURL(page), throwError("The URL provided is invalid.")],
+        [++cyclic > maxRedirects, throwError("Cyclic routing detected")],
+        [_, () => `Location: ${page}`]
+      );
+
+    // Valid URL
+    expect(redirector("https://example.com")).toBe("Location: https://example.com");
+
+    // null page
+    expect(redirector(null)).toBe("reload");
+
+    // Invalid URL
+    expect(() => redirector("not-a-url")).toThrow("The URL provided is invalid.");
+
+    // Cyclic routing (cyclic is already 1 from valid URL test)
+    cyclic = 10;
+    expect(() => redirector("https://example.com", 10)).toThrow("Cyclic routing detected");
+  });
+
+  test("conditional error throwing with guards", () => {
+    const validateAge = (age) =>
+      match(age)(
+        [(x) => x < 0, throwError("Age cannot be negative")],
+        [(x) => x > 150, throwError("Age seems unrealistic")],
+        [(x) => x >= 18, "Adult"],
+        [_, "Minor"]
+      );
+
+    expect(validateAge(25)).toBe("Adult");
+    expect(validateAge(15)).toBe("Minor");
+    expect(() => validateAge(-5)).toThrow("Age cannot be negative");
+    expect(() => validateAge(200)).toThrow("Age seems unrealistic");
+  });
+
+  test("HTTP status validation", () => {
+    const handleStatus = (status) =>
+      match(status)(
+        [or(200, 201, 204), "Success"],
+        [or(400, 404), throwError("Client error occurred")],
+        [or(500, 502, 503), throwError("Server error occurred")],
+        [_, throwError("Unknown status code")]
+      );
+
+    expect(handleStatus(200)).toBe("Success");
+    expect(() => handleStatus(404)).toThrow("Client error occurred");
+    expect(() => handleStatus(500)).toThrow("Server error occurred");
+    expect(() => handleStatus(999)).toThrow("Unknown status code");
+  });
+
+  test("nested match with error throwing", () => {
+    const process = (data) =>
+      match(data)(
+        [{ type: "user", role: "$r" }, (b) =>
+          match(b.r)(
+            ["admin", "Admin access"],
+            ["user", "User access"],
+            [_, throwError("Unknown role")]
+          )
+        ],
+        [_, throwError("Invalid data structure")]
+      );
+
+    expect(process({ type: "user", role: "admin" })).toBe("Admin access");
+    expect(() => process({ type: "user", role: "unknown" })).toThrow("Unknown role");
+    expect(() => process({ invalid: true })).toThrow("Invalid data structure");
   });
 });

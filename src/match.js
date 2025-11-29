@@ -5,6 +5,14 @@ const DEFAULT = Symbol.for("m-def");
 export const or = (...patterns) => (value) =>
   patterns.some((p) => Object.is(value, p));
 
+// Error helper: throw errors in match expressions (like PHP 8.0+)
+const throwFn = (m) => () => {
+  throw Error(m);
+};
+export const throwError = throwFn;
+export const fail = throwFn;
+export const panic = throwFn;
+
 export { _, DEFAULT as def };
 
 export const match = (value) => {
