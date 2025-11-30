@@ -6,8 +6,9 @@
 - 🎯 **Destructuring** with `$variable`
 - 🔥 **Wildcards** `_` for any value
 - 🎨 **OR patterns** - Match multiple values: `or(1, 2, 3)`
+- ⚠️ **Error helpers** - PHP 8.0+ style: `throwError()`, `fail()`, `panic()`
 - 🛡️ **Type-safe** with TypeScript
-- 📦 **< 1 KB** (883 bytes) · 0 dependencies
+- 📦 **< 1 KB** (1006 bytes) · 0 dependencies
 - ⚡ Optimal performance
 
 ## Installation
@@ -276,6 +277,83 @@ match({ status: 404 })(
 );
 ```
 
+### Error helpers (PHP 8.0+ style)
+
+Throw errors directly in match expressions with `throwError()`, `fail()`, and `panic()`:
+
+```javascript
+import { match, _, throwError, fail, panic } from "match-pro";
+
+// throwError - General purpose error throwing
+const processRequest = (req) =>
+  match(req)(
+    [{ auth: null }, throwError("Authentication required")],
+    [{ auth: "$token" }, (b) => handleRequest(b.token)],
+    [_, throwError("Invalid request")]
+  );
+
+// fail - For validation failures (same as throwError, more expressive)
+const validateUser = (user) =>
+  match(true)(
+    [!user.email, fail("Email is required")],
+    [!user.email.includes("@"), fail("Invalid email format")],
+    [user.age < 18, fail("Must be 18 or older")],
+    [_, () => createUser(user)]
+  );
+
+// panic - For "impossible" states (Rust-style)
+const handleState = (state) =>
+  match(state)(
+    ["idle", () => startProcess()],
+    ["running", () => continueProcess()],
+    ["completed", () => finishProcess()],
+    [_, panic(`Invalid state: ${state}`)] // Should never happen
+  );
+```
+
+Real-world example:
+
+```javascript
+// API endpoint with validation
+const handleCreateUser = (req) =>
+  match(req)(
+    // Validate request
+    [{ body: null }, fail("Request body is required")],
+    [{ body: { email: null } }, fail("Email is required")],
+    [{ body: { email: "$e" } }, (b) =>
+      match(true)(
+        [!b.e.includes("@"), fail("Invalid email format")],
+        [b.e.length > 100, fail("Email too long")],
+        [_, () => ({ status: 201, body: { email: b.e } })]
+      )
+    ],
+    [_, throwError("Malformed request")]
+  );
+
+// throws Error: "Invalid email format"
+handleCreateUser({ body: { email: "notanemail" } });
+```
+
+**When to use each:**
+- `throwError()` - General errors, authentication failures
+- `fail()` - Validation failures, bad input
+- `panic()` - Impossible states, programming errors
+
+All three throw standard `Error` objects, so they work with any error handling:
+
+```javascript
+try {
+  match(user)(
+    [{ role: "guest" }, fail("Access denied")],
+    [{ role: "admin" }, () => deleteDatabase()]
+  );
+} catch (err) {
+  console.error(err.message); // "Access denied"
+}
+```
+
+See `examples/php-style-errors.js` and `examples/real-world-examples.js` for more examples.
+
 ### Exhaustive matching
 
 ```javascript
@@ -400,6 +478,35 @@ match({ role: userRole })(
 );
 ```
 
+### Error helpers: `throwError()`, `fail()`, `panic()`
+
+Throw errors directly in match expressions (PHP 8.0+ style).
+
+```javascript
+import { match, throwError, fail, panic } from "match-pro";
+
+// All three throw standard Error objects when matched
+match(value)(
+  [condition1, throwError("General error message")],
+  [condition2, fail("Validation failed")],
+  [condition3, panic("This should never happen")]
+);
+```
+
+**Signatures:**
+- `throwError(message: string): () => never`
+- `fail(message: string): () => never`
+- `panic(message: string): () => never`
+
+**Behavior:** Returns a function that throws `Error(message)` when executed. The error is only thrown if the pattern matches.
+
+**Use cases:**
+- `throwError()` - Authentication, authorization, general errors
+- `fail()` - Validation failures, bad input data
+- `panic()` - Impossible states, programming errors (Rust-style)
+
+See the "Error helpers" section above for complete examples.
+
 ### `.exhaustive()` method
 
 Enable exhaustive matching mode (throws error if no match and no default).
@@ -454,7 +561,7 @@ const result = match(user)(
 All types included:
 
 ```typescript
-import { match, _, Wildcard, Bindings, def, or } from "match-pro";
+import { match, _, Wildcard, Bindings, def, or, throwError, fail, panic } from "match-pro";
 
 const result: string = match<User>(user)(
   [{ role: "admin" }, "Admin"],
@@ -483,6 +590,14 @@ const message: string = match<Status>(status)(
   ["loading", "Please wait..."],
   [def, "Something happened"]
 ) as string;
+
+// Error helpers with TypeScript (typed as never)
+const validateAge = (age: number): string =>
+  match<boolean>(true)(
+    [age < 0, fail("Age cannot be negative")],
+    [age > 150, fail("Age seems invalid")],
+    [_, () => `Valid age: ${age}`]
+  ) as string;
 ```
 
 ## Why use match?
@@ -501,7 +616,9 @@ const message: string = match<Status>(status)(
 
 ✅ **OR patterns** - `or(1, 2, 3)` for multiple values
 
-✅ **Tiny** - < 1 KB minified (883 bytes!)
+✅ **Error helpers** - PHP 8.0+ style `throwError()`, `fail()`, `panic()`
+
+✅ **Tiny** - < 1 KB minified (1006 bytes!)
 
 ✅ **Zero deps** - no dependencies
 
@@ -511,11 +628,22 @@ const message: string = match<Status>(status)(
 
 - **Zero-copy**: does not clone objects
 - **Lazy evaluation**: stops at the first match
-- **Minimal overhead**: ~883 bytes minified
+- **Minimal overhead**: ~1006 bytes minified
 
 ## Complete examples
 
-Check out the `examples/` folder for TypeScript usage examples.
+Check out the `examples/` folder for comprehensive usage:
+
+- **`examples/typescript-example.ts`** - TypeScript usage with type safety
+- **`examples/php-style-errors.js`** - Error helpers (throwError, fail, panic)
+- **`examples/real-world-examples.js`** - 7 production-ready patterns:
+  - Redux reducer (shopping cart)
+  - API handler with validation
+  - State machine (order processing)
+  - Authentication & authorization
+  - Webhook handler (payment processor)
+  - Command pattern (CLI app)
+  - Response normalizer (multi-API)
 
 ## License
 
