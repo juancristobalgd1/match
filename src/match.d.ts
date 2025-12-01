@@ -4,6 +4,14 @@ export declare const DEFAULT: unique symbol;
 export type Wildcard = typeof _;
 export type Default = typeof DEFAULT;
 
+// OR pattern helper
+export declare function or<T>(...patterns: T[]): (value: T) => boolean;
+
+// Error helpers (PHP 8.0+ style)
+export declare function throwError(message: string): () => never;
+export declare function fail(message: string): () => never;
+export declare function panic(message: string): () => never;
+
 export { DEFAULT as def };
 
 // Types for bindings captured with $variable
