@@ -8,6 +8,7 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "lib": ["ES2015"],
+    "types": ["node"],
     "noEmit": true
   },
   "include": ["src/**/*", "examples/**/*"]

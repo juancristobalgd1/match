@@ -30,6 +30,7 @@
   "license": "MIT",
   "repository": "https://github.com/juancristobalgd1/match",
   "devDependencies": {
+    "@types/node": "^24.10.1",
     "terser": "^5.31.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.10"
