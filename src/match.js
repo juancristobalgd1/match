@@ -1,19 +1,14 @@
-const _ = Symbol.for("m-wild");
-const DEFAULT = Symbol.for("m-def");
+const _ = Symbol.for("m-w");
+const def = Symbol.for("m-d");
 
-// OR pattern helper: match if value equals any of the patterns
 export const or = (...patterns) => (value) =>
   patterns.some((p) => Object.is(value, p));
 
-// Error helper: throw errors in match expressions (like PHP 8.0+)
-const throwFn = (m) => () => {
-  throw Error(m);
-};
-export const throwError = throwFn;
-export const fail = throwFn;
-export const panic = throwFn;
+export const throwError = (m) => () => { throw Error(m); };
+export const fail = throwError;
+export const panic = throwError;
 
-export { _, DEFAULT as def };
+export { _, def };
 
 export const match = (value) => {
   let exhaustive = false;
@@ -25,7 +20,7 @@ export const match = (value) => {
 
     for (const [pattern, handler] of cases) {
       const bindings = {};
-      const isDefault = pattern === _ || pattern === DEFAULT;
+      const isDefault = pattern === _ || pattern === def;
 
       if (isDefault) hasDefault = true;
 
@@ -55,7 +50,7 @@ export const match = (value) => {
 };
 
 function checkMatch(value, pattern, bindings) {
-  if (pattern === _ || pattern === DEFAULT) return true;
+  if (pattern === _ || pattern === def) return true;
 
   if (typeof pattern === "function") return pattern(value);
 
@@ -78,7 +73,7 @@ function checkMatch(value, pattern, bindings) {
       continue;
     }
 
-    if (pat === _ || pat === DEFAULT) continue;
+    if (pat === _ || pat === def) continue;
 
     if (!checkMatch(value[key], pat, bindings)) return false;
   }
