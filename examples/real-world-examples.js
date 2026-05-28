@@ -89,10 +89,10 @@ const handleApiRequest = (req) =>
     // Create user - con validación
     [{ method: "POST", path: "/users", body: "$data" }, (b) =>
       match(true)(
-        [!b.data.email, fail("Email is required")],
-        [!b.data.email.includes("@"), fail("Invalid email format")],
-        [!b.data.password, fail("Password is required")],
-        [b.data.password.length < 8, fail("Password must be at least 8 chars")],
+        [() => !b.data.email, fail("Email is required")],
+        [() => !b.data.email.includes("@"), fail("Invalid email format")],
+        [() => !b.data.password, fail("Password is required")],
+        [() => b.data.password.length < 8, fail("Password must be at least 8 chars")],
         [_, () => ({
           status: 201,
           body: { id: Math.random(), ...b.data, password: undefined }
