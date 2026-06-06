@@ -1,16 +1,12 @@
 export declare const _: unique symbol;
-export declare const def: unique symbol;
 
 export type Wildcard = typeof _;
-export type Default = typeof def;
 
 // OR pattern helper
 export declare function or<T>(...patterns: T[]): (value: T) => boolean;
 
-// Error helpers (PHP 8.0+ style)
+// Error helper — throws when the pattern matches
 export declare function throwError(message: string): () => never;
-export declare function fail(message: string): () => never;
-export declare function panic(message: string): () => never;
 
 // Types for bindings captured with $variable
 export type Bindings = Record<string, any>;
@@ -21,26 +17,12 @@ export type Handler<T, R> = R | ((bindings: Bindings, value: T) => R);
 // A case is a tuple of [pattern, handler]
 export type Case<T, R> = [pattern: any, handler: Handler<T, R>];
 
-// ============================================
-// match(x)([pattern, handler], [pattern, handler], ...)
-// ============================================
-
 export interface ExecuteMatch<T> {
-  // Execute match with varargs of cases
   <R = any>(...cases: Case<T, R>[]): R | undefined;
-
-  // Enable exhaustive mode (throws if no match and no default)
   exhaustive(): ExecuteMatch<T>;
 }
 
-// ============================================
-// MAIN FUNCTION
-// ============================================
-
 export declare function match<T>(value: T): ExecuteMatch<T>;
-
-// ============================================
-// NAMESPACE (for use with <script>)
-// ============================================
+export declare function match<T, R = any>(value: T, ...flatCases: any[]): R | undefined;
 
 export as namespace matchPro;

@@ -1,15 +1,15 @@
 # match
 
-**The cleanest pattern matching syntax in pure JavaScript**
+**Lightweight pattern matching for JavaScript — < 1 KB, zero dependencies**
 
-- ✨ **Clean syntax** - Rust/OCaml-inspired arrays
-- 🎯 **Destructuring** with `$variable`
-- 🔥 **Wildcards** `_` for any value
-- 🎨 **OR patterns** - Match multiple values: `or(1, 2, 3)`
-- ⚠️ **Error helpers** - PHP 8.0+ style: `throwError()`, `fail()`, `panic()`
-- 🛡️ **Type-safe** with TypeScript
-- 📦 **< 1 KB** (1006 bytes) · 0 dependencies
-- ⚡ Optimal performance
+- Clean array syntax, formatter-friendly
+- Destructuring with `$variable`
+- Wildcards `_` for any value
+- OR patterns: `or(1, 2, 3)`
+- Error helpers: `throwError()`
+- Exhaustive mode (throws if no match)
+- TypeScript support
+- < 1 KB minified · 0 dependencies
 
 ## Installation
 
@@ -17,63 +17,44 @@
 npm install match-pro
 ```
 
-## 🚀 Ultra Clean Syntax
+## Two syntaxes
+
+### Array syntax — for complex patterns
 
 ```javascript
 import { match, _ } from "match-pro";
 
 const user = { name: "Ana", role: "admin" };
 
-// ✅ Clean array syntax - formatter-friendly!
-const result = match(user)(
-  [{ role: "admin", name: "$n" }, (b) => `👑 Hello boss ${b.n}!`],
-  [{ role: "user", name: "$n" }, (b) => `👋 Hello ${b.n}`],
-  [_, "👻 Guest"]
+match(user)(
+  [{ role: "admin", name: "$n" }, (b) => `Hello ${b.n}`],
+  [{ role: "user",  name: "$n" }, (b) => `Hi ${b.n}`],
+  [_, "Guest"]
 );
-
-// => "👑 Hello boss Ana!"
+// => "Hello Ana"
 ```
 
-## 🔥 PHP/Rust-style Features
+### Flat syntax — for inline, one-liner use
 
 ```javascript
-import { match, _, def } from "match-pro";
+import { match, _ } from "match-pro";
 
-// ✨ Use 'def' keyword like PHP
-const result = match(status)(
-  ["success", 200],
-  ["error", 500],
-  [def, 400] // More expressive than _
+match(n, 0, "zero", 1, "one", 42, "the answer", _, "other");
+
+// Inline in a function — beats if/else as an expression
+const classify = (n) => match(n,
+  (x) => x >= 18, "adult",
+  (x) => x >= 13, "teen",
+  _, "child"
 );
-
-// 🛡️ Exhaustive mode (like Rust/TypeScript)
-match(value).exhaustive()(
-  [1, "one"],
-  [2, "two"]
-);
-// ❌ Throws error if no match and no default!
-
-// ✅ Safe with default case
-match(value).exhaustive()(
-  [1, "one"],
-  [2, "two"],
-  [def, "other"]
-); // No error
 ```
 
-## Syntax
-
-```javascript
-match(value)(
-  [pattern1, handler1],
-  [pattern2, handler2],
-  [_, default]
-)
-```
+**Pattern** can be a primitive, object, array, guard function, OR pattern, or wildcard `_`.  
+**Handler** can be a direct value or `(bindings, value) => result`.
 
 ## Quick examples
 
-### 1️⃣ Numbers
+### Numbers
 
 ```javascript
 match(2)(
@@ -85,20 +66,18 @@ match(2)(
 // => "dos"
 ```
 
-### 2️⃣ Destructuring
+### Destructuring
 
 ```javascript
-const user = { name: "Ana", role: "admin", age: 28 };
-
-match(user)(
+match({ name: "Ana", role: "admin" })(
   [{ name: "$name", role: "admin" }, (b) => `Hello boss ${b.name}`],
-  [{ name: "$name" }, (b) => `Hello ${b.name}`],
+  [{ name: "$name" },               (b) => `Hello ${b.name}`],
   [_, "Anonymous"]
 );
 // => "Hello boss Ana"
 ```
 
-### 3️⃣ Arrays/Tuples
+### Arrays / Tuples
 
 ```javascript
 match([1, 999, 3])(
@@ -109,46 +88,43 @@ match([1, 999, 3])(
 // => "First and last match"
 ```
 
-### 4️⃣ Guards (predicates)
+### Guards (predicates)
 
 ```javascript
 match(17)(
-  [(x) => x >= 18, "🔞 Adult"],
-  [(x) => x >= 13, "👦 Teenager"],
-  [_, "👶 Child"]
+  [(x) => x >= 18, "Adult"],
+  [(x) => x >= 13, "Teenager"],
+  [_, "Child"]
 );
-// => "👦 Teenager"
+// => "Teenager"
 ```
 
-### 5️⃣ Redux Actions
+### Redux actions
 
 ```javascript
-const action = {
-  type: "ADD_TODO",
-  payload: { text: "Aprender match" },
-};
+const action = { type: "ADD_TODO", payload: { text: "Learn match" } };
 
 match(action)(
-  [{ type: "ADD_TODO", payload: { text: "$t" } }, (b) => `➕ ${b.t}`],
-  [{ type: "TOGGLE_TODO", payload: { id: "$id" } }, (b) => `🔄 #${b.id}`],
-  [{ type: "DELETE_TODO", payload: { id: "$id" } }, (b) => `🗑️ #${b.id}`],
-  [_, "❓ Unknown action"]
+  [{ type: "ADD_TODO",    payload: { text: "$t" } }, (b) => `Add: ${b.t}`],
+  [{ type: "TOGGLE_TODO", payload: { id: "$id" }  }, (b) => `Toggle #${b.id}`],
+  [{ type: "DELETE_TODO", payload: { id: "$id" }  }, (b) => `Delete #${b.id}`],
+  [_, "Unknown action"]
 );
-// => "➕ Aprender match"
+// => "Add: Learn match"
 ```
 
 ## Real-world use cases
 
-### State Machine
+### State machine
 
 ```javascript
 const nextState = (state, event) =>
   match({ state, event })(
-    [{ state: "idle", event: "start" }, "loading"],
+    [{ state: "idle",    event: "start"   }, "loading"],
     [{ state: "loading", event: "success" }, "ready"],
-    [{ state: "loading", event: "error" }, "error"],
-    [{ state: "error", event: "retry" }, "loading"],
-    [{ state: _, event: "reset" }, "idle"],
+    [{ state: "loading", event: "error"   }, "error"],
+    [{ state: "error",   event: "retry"   }, "loading"],
+    [{ state: _,         event: "reset"   }, "idle"],
     [_, state]
   );
 
@@ -161,7 +137,7 @@ nextState("idle", "start"); // => "loading"
 const validate = (form) =>
   match(form)(
     [{ email: "$e", password: "$p" }, (b) => validateLogin(b.e, b.p)],
-    [{ email: "$e" }, () => "Password missing"],
+    [{ email: "$e" },                 () => "Password missing"],
     [_, "Incomplete data"]
   );
 ```
@@ -171,9 +147,9 @@ const validate = (form) =>
 ```javascript
 const route = (req) =>
   match(req)(
-    [{ method: "GET", path: "/users" }, () => listUsers()],
-    [{ method: "GET", path: "/users/$id" }, (b) => getUser(b.id)],
-    [{ method: "POST", path: "/users" }, () => createUser()],
+    [{ method: "GET",  path: "/users"     }, () => listUsers()],
+    [{ method: "GET",  path: "/users/$id" }, (b) => getUser(b.id)],
+    [{ method: "POST", path: "/users"     }, () => createUser()],
     [_, () => notFound()]
   );
 ```
@@ -198,153 +174,85 @@ const classify = (age) =>
 
 ```javascript
 match({ name: "Bob", age: 30, city: "Madrid" })(
-  [{ name: "$n", age: "$a", city: "$c" }, (b) => `${b.n}, ${b.a} years old, ${b.c}`],
+  [{ name: "$n", age: "$a", city: "$c" }, (b) => `${b.n}, ${b.a}, ${b.c}`],
   [_, "N/A"]
 );
-// => "Bob, 30 years old, Madrid"
+// => "Bob, 30, Madrid"
 ```
 
 ### Nested objects
 
 ```javascript
 match({ user: { profile: { role: "admin" } } })(
-  [{ user: { profile: { role: "admin" } } }, "🔐 Admin"],
-  [{ user: { profile: { role: "user" } } }, "👤 User"],
-  [_, "❌ No access"]
+  [{ user: { profile: { role: "admin" } } }, "Admin"],
+  [{ user: { profile: { role: "user"  } } }, "User"],
+  [_, "No access"]
 );
-// => "🔐 Admin"
-```
-
-### Wildcards in objects
-
-```javascript
-match({ role: "admin", perms: ["read", "write"] })(
-  [{ role: "admin", perms: _ }, "Admin with permissions"],
-  [{ role: "admin" }, "Admin without permissions"],
-  [_, "Not admin"]
-);
-// => "Admin with permissions"
 ```
 
 ### Guards in properties
 
 ```javascript
 match({ score: 85 })(
-  [{ score: (s) => s >= 90 }, "🏆 Excellent"],
-  [{ score: (s) => s >= 70 }, "✅ Passed"],
-  [{ score: (s) => s >= 60 }, "⚠️ Sufficient"],
-  [_, "❌ Failed"]
+  [{ score: (s) => s >= 90 }, "Excellent"],
+  [{ score: (s) => s >= 70 }, "Passed"],
+  [{ score: (s) => s >= 60 }, "Sufficient"],
+  [_, "Failed"]
 );
-// => "✅ Passed"
+// => "Passed"
 ```
 
 ### OR patterns
 
-Match multiple values with the `or()` helper:
+Match multiple values with `or()`:
 
 ```javascript
 import { match, _, or } from "match-pro";
 
-// HTTP Status codes
 const getStatusType = (code) =>
   match(code)(
-    [or(200, 201, 204), "success"],
+    [or(200, 201, 204),      "success"],
     [or(400, 401, 403, 404), "client error"],
-    [or(500, 502, 503), "server error"],
+    [or(500, 502, 503),      "server error"],
     [_, "unknown"]
   );
 
-getStatusType(200);  // "success"
-getStatusType(404);  // "client error"
-getStatusType(500);  // "server error"
+getStatusType(200); // "success"
+getStatusType(404); // "client error"
+getStatusType(500); // "server error"
 ```
 
-Works with any type:
+`or()` works inside object patterns too:
 
 ```javascript
-// Strings
-match("hello")(
-  [or("hi", "hello", "hey"), "greeting"],
-  [or("bye", "goodbye"), "farewell"],
-  [_, "other"]
-);
-
-// In object patterns
-match({ status: 404 })(
-  [{ status: or(200, 201) }, "success"],
-  [{ status: or(400, 404, 500) }, "error"],
-  [_, "unknown"]
+match({ role: userRole })(
+  [{ role: or("admin", "owner") }, "full access"],
+  [{ role: "user" },              "limited access"],
+  [_, "no access"]
 );
 ```
 
-### Error helpers (PHP 8.0+ style)
+### Error helper: `throwError()`
 
-Throw errors directly in match expressions with `throwError()`, `fail()`, and `panic()`:
+Throw errors directly inside a match expression:
 
 ```javascript
-import { match, _, throwError, fail, panic } from "match-pro";
+import { match, _, throwError } from "match-pro";
 
-// throwError - General purpose error throwing
 const processRequest = (req) =>
   match(req)(
-    [{ auth: null }, throwError("Authentication required")],
-    [{ auth: "$token" }, (b) => handleRequest(b.token)],
+    [{ auth: null },    throwError("Authentication required")],
+    [{ auth: "$token"}, (b) => handleRequest(b.token)],
     [_, throwError("Invalid request")]
   );
-
-// fail - For validation failures (same as throwError, more expressive)
-const validateUser = (user) =>
-  match(true)(
-    [!user.email, fail("Email is required")],
-    [!user.email.includes("@"), fail("Invalid email format")],
-    [user.age < 18, fail("Must be 18 or older")],
-    [_, () => createUser(user)]
-  );
-
-// panic - For "impossible" states (Rust-style)
-const handleState = (state) =>
-  match(state)(
-    ["idle", () => startProcess()],
-    ["running", () => continueProcess()],
-    ["completed", () => finishProcess()],
-    [_, panic(`Invalid state: ${state}`)] // Should never happen
-  );
 ```
 
-Real-world example:
-
-```javascript
-// API endpoint with validation
-const handleCreateUser = (req) =>
-  match(req)(
-    // Validate request
-    [{ body: null }, fail("Request body is required")],
-    [{ body: { email: null } }, fail("Email is required")],
-    [{ body: { email: "$e" } }, (b) =>
-      match(true)(
-        [!b.e.includes("@"), fail("Invalid email format")],
-        [b.e.length > 100, fail("Email too long")],
-        [_, () => ({ status: 201, body: { email: b.e } })]
-      )
-    ],
-    [_, throwError("Malformed request")]
-  );
-
-// throws Error: "Invalid email format"
-handleCreateUser({ body: { email: "notanemail" } });
-```
-
-**When to use each:**
-- `throwError()` - General errors, authentication failures
-- `fail()` - Validation failures, bad input
-- `panic()` - Impossible states, programming errors
-
-All three throw standard `Error` objects, so they work with any error handling:
+The error is only thrown if the pattern matches:
 
 ```javascript
 try {
   match(user)(
-    [{ role: "guest" }, fail("Access denied")],
+    [{ role: "guest" }, throwError("Access denied")],
     [{ role: "admin" }, () => deleteDatabase()]
   );
 } catch (err) {
@@ -352,303 +260,177 @@ try {
 }
 ```
 
-See `examples/php-style-errors.js` and `examples/real-world-examples.js` for more examples.
-
 ### Exhaustive matching
 
-```javascript
-import { match, def } from "match-pro";
+Force an error when no pattern matches and no wildcard is present:
 
-// Force exhaustive checks (throws if no match)
+```javascript
+import { match, _ } from "match-pro";
+
 const getStatus = (code) =>
   match(code).exhaustive()(
     [200, "OK"],
     [404, "Not Found"],
     [500, "Error"],
-    [def, "Unknown"] // Required!
+    [_, "Unknown"]
   );
 
-// ❌ This would throw an error:
-// match(999).exhaustive()([200, "OK"], [404, "Not Found"]);
+// Without _ or a matching pattern, throws:
 // Error: No match: 999
-
-// ✅ This is safe:
 match(999).exhaustive()(
   [200, "OK"],
-  [def, "Unknown"]
-); // => "Unknown"
-```
-
-### Using DEFAULT symbol
-
-```javascript
-import { match, def } from "match-pro";
-
-// Use 'def' for better readability (like PHP 8+)
-const classify = (age) =>
-  match(age)(
-    [(x) => x >= 18, "Adult"],
-    [(x) => x >= 13, "Teen"],
-    [def, "Child"] // Same as _ but more expressive
-  );
-
-// Works in objects and arrays too
-match({ role: "admin", perms: def })(
-  [{ role: "admin", perms: def }, "Admin with any perms"],
-  [def, "Other"]
+  [404, "Not Found"]
 );
 ```
 
 ## API Reference
 
-### Syntax
+### `match(value)(...cases)` — array syntax
 
 ```javascript
 match(value)(
   [pattern, handler],
-  [pattern, handler],
-  [_, default]
+  ...
 )
 ```
 
-**Pattern**: Can be:
+Returns the result of the first matching handler, or `undefined` if no match.
 
-- Primitive value: `1`, `"hello"`, `null`
-- Object: `{ role: "admin" }`
-- Array: `[1, _, 3]`
-- Guard function: `x => x >= 18`
-- OR pattern: `or(1, 2, 3)` - matches any of the values
-- Wildcard: `_` or `def`
-
-**Handler**: Can be:
-
-- Direct value: `"result"`
-- Function: `(bindings, value) => ...`
-
-### Wildcard `_` and `def`
-
-Special symbols that match any value.
+### `match(value, ...flatCases)` — flat syntax
 
 ```javascript
-import { match, _, def } from "match-pro";
+match(value, pattern, handler, pattern, handler, ...)
+```
 
-match([1, 999, 3])(
-  [[1, _, 3], "match"], // _ matches 999
-  [_, "default"] // _ matches everything
-);
+Same semantics, inline form. Patterns and handlers alternate as arguments.
 
-// def works exactly like _ but is more expressive
+### `match(value).exhaustive()(...cases)`
+
+Array syntax only. Throws `Error("No match: <value>")` when nothing matches and no wildcard `_` is present.
+
+### Wildcard `_`
+
+Matches any value. Use as a default/fallback case:
+
+```javascript
+import { match, _ } from "match-pro";
+
 match(value)(
   [1, "one"],
-  [2, "two"],
-  [def, "other"]
+  [_, "anything else"]
 );
 ```
 
 ### Capture `"$variable"`
 
-Extracts values from the pattern.
+Extracts a value from an object pattern into `bindings`:
 
 ```javascript
 match({ name: "Ana", age: 28 })(
-  [{ name: "$n", age: "$a" }, (b) => `${b.n} is ${b.a} years old`],
+  [{ name: "$n", age: "$a" }, (b) => `${b.n} is ${b.a}`],
   [_, "No match"]
 );
-// Bindings: { n: "Ana", a: 28 }
+// bindings: { n: "Ana", a: 28 }
 ```
 
-### `or()` helper
+### `or(...values)`
 
-Match multiple values with a single pattern.
+Matches if the value is equal (via `Object.is`) to any of the given values:
 
 ```javascript
 import { match, or } from "match-pro";
 
 match(statusCode)(
   [or(200, 201, 204), "success"],
-  [or(400, 404), "client error"],
-  [or(500, 502, 503), "server error"],
-  [_, "unknown"]
-);
-
-// Can be nested in objects
-match({ role: userRole })(
-  [{ role: or("admin", "owner") }, "full access"],
-  [{ role: "user" }, "limited access"]
+  [or(400, 404),      "client error"],
+  [_, "other"]
 );
 ```
 
-### Error helpers: `throwError()`, `fail()`, `panic()`
+### `throwError(message)`
 
-Throw errors directly in match expressions (PHP 8.0+ style).
+Returns a handler function that throws `Error(message)` when invoked:
 
 ```javascript
-import { match, throwError, fail, panic } from "match-pro";
+import { match, throwError } from "match-pro";
 
-// All three throw standard Error objects when matched
 match(value)(
-  [condition1, throwError("General error message")],
-  [condition2, fail("Validation failed")],
-  [condition3, panic("This should never happen")]
+  [condition, throwError("Error message")],
+  [_, "ok"]
 );
-```
-
-**Signatures:**
-- `throwError(message: string): () => never`
-- `fail(message: string): () => never`
-- `panic(message: string): () => never`
-
-**Behavior:** Returns a function that throws `Error(message)` when executed. The error is only thrown if the pattern matches.
-
-**Use cases:**
-- `throwError()` - Authentication, authorization, general errors
-- `fail()` - Validation failures, bad input data
-- `panic()` - Impossible states, programming errors (Rust-style)
-
-See the "Error helpers" section above for complete examples.
-
-### `.exhaustive()` method
-
-Enable exhaustive matching mode (throws error if no match and no default).
-
-```javascript
-import { match, def } from "match-pro";
-
-// Throws if no match found
-match(value).exhaustive()(
-  [pattern1, handler1],
-  [pattern2, handler2]
-);
-// Error: No match: <value>
-
-// Safe with default case
-match(value).exhaustive()(
-  [pattern1, handler1],
-  [def, defaultHandler]
-); // OK
 ```
 
 ## Comparison with switch/if-else
 
-### ❌ With switch (verbose)
-
 ```javascript
+// switch — verbose, imperative
 let result;
 switch (user.role) {
-  case "admin":
-    result = `Hello ${user.name}`;
-    break;
-  case "user":
-    result = "Regular user";
-    break;
-  default:
-    result = "Guest";
+  case "admin": result = `Hello ${user.name}`; break;
+  case "user":  result = "Regular user";       break;
+  default:      result = "Guest";
 }
-```
 
-### ✅ With match (elegant)
-
-```javascript
+// match — expressive, returns a value
 const result = match(user)(
   [{ role: "admin", name: "$n" }, (b) => `Hello ${b.n}`],
-  [{ role: "user" }, "Regular user"],
+  [{ role: "user" },              "Regular user"],
   [_, "Guest"]
 );
 ```
 
 ## TypeScript
 
-All types included:
-
 ```typescript
-import { match, _, Wildcard, Bindings, def, or, throwError, fail, panic } from "match-pro";
+import { match, _, Wildcard, Bindings, or, throwError } from "match-pro";
 
-const result: string = match<User>(user)(
+const result = match<User>(user)(
   [{ role: "admin" }, "Admin"],
-  [{ role: "user" }, "User"],
+  [{ role: "user"  }, "User"],
   [_, "Guest"]
 ) as string;
 
-// With OR patterns
+// OR patterns
 const statusType = match<number>(code)(
   [or(200, 201, 204), "success"],
-  [or(400, 404), "client error"],
+  [or(400, 404),      "client error"],
   [_, "unknown"]
 ) as string;
 
-// With exhaustive mode
+// Exhaustive mode
 const status = match<number>(code).exhaustive()(
   [200, "OK"],
   [404, "Not Found"],
-  [def, "Unknown"]
+  [_, "Unknown"]
 ) as string;
-
-// Type-safe pattern matching
-type Status = "idle" | "loading" | "success" | "error";
-const message: string = match<Status>(status)(
-  ["idle", "Ready"],
-  ["loading", "Please wait..."],
-  [def, "Something happened"]
-) as string;
-
-// Error helpers with TypeScript (typed as never)
-const validateAge = (age: number): string =>
-  match<boolean>(true)(
-    [age < 0, fail("Age cannot be negative")],
-    [age > 150, fail("Age seems invalid")],
-    [_, () => `Valid age: ${age}`]
-  ) as string;
 ```
 
 ## Why use match?
 
-✅ **More expressive** than switch/if-else
-
-✅ Real **pattern matching** with destructuring
-
-✅ **Immutable** - returns values directly
-
-✅ **Type-safe** with TypeScript
-
-✅ **Exhaustive checks** - like Rust and PHP 8+
-
-✅ **DEFAULT symbol** - more readable than `_`
-
-✅ **OR patterns** - `or(1, 2, 3)` for multiple values
-
-✅ **Error helpers** - PHP 8.0+ style `throwError()`, `fail()`, `panic()`
-
-✅ **Tiny** - < 1 KB minified (1006 bytes!)
-
-✅ **Zero deps** - no dependencies
-
-✅ **Formatter-friendly** - no chainable syntax issues
+- More expressive than switch/if-else
+- Real pattern matching with destructuring
+- Immutable — returns values directly
+- Type-safe with TypeScript
+- Exhaustive checks
+- OR patterns
+- Error helpers
+- < 1 KB minified · zero dependencies
 
 ## Performance
 
-- **Zero-copy**: does not clone objects
-- **Lazy evaluation**: stops at the first match
-- **Minimal overhead**: ~1006 bytes minified
+- Zero-copy: does not clone objects
+- Lazy evaluation: stops at the first match
 
-## Complete examples
+## Examples
 
-Check out the `examples/` folder for comprehensive usage:
+See the `examples/` folder:
 
-- **`examples/typescript-example.ts`** - TypeScript usage with type safety
-- **`examples/php-style-errors.js`** - Error helpers (throwError, fail, panic)
-- **`examples/real-world-examples.js`** - 7 production-ready patterns:
-  - Redux reducer (shopping cart)
-  - API handler with validation
-  - State machine (order processing)
-  - Authentication & authorization
-  - Webhook handler (payment processor)
-  - Command pattern (CLI app)
-  - Response normalizer (multi-API)
+- `examples/typescript-example.ts` — TypeScript usage
+- `examples/php-style-errors.js` — Error helpers
+- `examples/real-world-examples.js` — 7 production patterns (Redux, state machines, routing, etc.)
 
 ## License
 
 MIT © Juan Cristobal
-
-## Contribute
 
 Issues and PRs welcome on [GitHub](https://github.com/juancristobalgd1/match)
