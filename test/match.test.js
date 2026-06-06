@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { match, _, def, or, throwError, fail, panic } from "../src/match.js";
+import { match, _, or, throwError } from "../src/match.js";
 
 describe("match - Clean Syntax", () => {
   test("basic numbers", () => {
@@ -278,38 +278,8 @@ describe("match - Edge Cases", () => {
   });
 });
 
-describe("match - DEFAULT symbol and exhaustive mode", () => {
-  test("DEFAULT works like wildcard", () => {
-    const result = match(42)([1, "one"], [2, "two"], [def, "default"]);
-    expect(result).toBe("default");
-  });
-
-  test("DEFAULT with destructuring", () => {
-    const user = { name: "John", age: 30 };
-    const result = match(user)(
-      [{ name: "Jane" }, "Jane"],
-      [def, "someone else"]
-    );
-    expect(result).toBe("someone else");
-  });
-
-  test("DEFAULT in object properties", () => {
-    const result = match({ role: "admin", perms: ["read"] })(
-      [{ role: "admin", perms: def }, "admin with perms"],
-      [def, "other"]
-    );
-    expect(result).toBe("admin with perms");
-  });
-
-  test("DEFAULT in arrays", () => {
-    const result = match([1, 2, 3])(
-      [[1, def, 3], "matched"],
-      [def, "default"]
-    );
-    expect(result).toBe("matched");
-  });
-
-  test("exhaustive mode throws when no match and no default", () => {
+describe("match - exhaustive mode", () => {
+  test("exhaustive mode throws when no match and no wildcard", () => {
     expect(() => {
       match(42).exhaustive()([1, "one"], [2, "two"]);
     }).toThrow("No match");
@@ -320,15 +290,6 @@ describe("match - DEFAULT symbol and exhaustive mode", () => {
       [1, "one"],
       [2, "two"],
       [_, "default"]
-    );
-    expect(result).toBe("default");
-  });
-
-  test("exhaustive mode with DEFAULT doesn't throw", () => {
-    const result = match(42).exhaustive()(
-      [1, "one"],
-      [2, "two"],
-      [def, "default"]
     );
     expect(result).toBe("default");
   });
@@ -344,29 +305,8 @@ describe("match - DEFAULT symbol and exhaustive mode", () => {
     }).toThrow('{"x":42}');
   });
 
-  test("exhaustive mode with early evaluation", () => {
-    expect(() => {
-      match(42).exhaustive()([1, "one"], [2, "two"]);
-    }).toThrow("No match");
-  });
-
-  test("can mix _ and DEFAULT in same match", () => {
-    const result = match([1, 2, 3])(
-      [[1, _, def], "matched"],
-      [def, "default"]
-    );
-    expect(result).toBe("matched");
-  });
-
-  test("DEFAULT and _ are interchangeable", () => {
-    const result1 = match(42)([1, "one"], [_, "wildcard"]);
-    const result2 = match(42)([1, "one"], [def, "default"]);
-    expect(result1).toBe("wildcard");
-    expect(result2).toBe("default");
-  });
-
   test("exhaustive can be chained before patterns", () => {
-    const result = match(1).exhaustive()([1, "matched"], [def, "default"]);
+    const result = match(1).exhaustive()([1, "matched"], [_, "default"]);
     expect(result).toBe("matched");
   });
 
@@ -374,9 +314,25 @@ describe("match - DEFAULT symbol and exhaustive mode", () => {
     const data = { user: { role: "admin" } };
     const result = match(data).exhaustive()(
       [{ user: { role: "admin" } }, "admin"],
-      [def, "other"]
+      [_, "other"]
     );
     expect(result).toBe("admin");
+  });
+
+  test("wildcard in object properties", () => {
+    const result = match({ role: "admin", perms: ["read"] })(
+      [{ role: "admin", perms: _ }, "admin with perms"],
+      [_, "other"]
+    );
+    expect(result).toBe("admin with perms");
+  });
+
+  test("wildcard in arrays", () => {
+    const result = match([1, 2, 3])(
+      [[1, _, 3], "matched"],
+      [_, "default"]
+    );
+    expect(result).toBe("matched");
   });
 });
 
@@ -481,22 +437,12 @@ describe("match - Error helpers (PHP-style)", () => {
     expect(result).toBe("default");
   });
 
-  test("fail helper (alias)", () => {
-    expect(() => {
-      match("invalid")(
-        ["invalid", fail("Invalid input")],
-        [_, "valid"]
-      );
-    }).toThrow("Invalid input");
-  });
-
-  test("panic helper (Rust-style)", () => {
-    expect(() => {
-      match(null)(
-        [null, panic("Unexpected null value")],
-        [_, "ok"]
-      );
-    }).toThrow("Unexpected null value");
+  test("throwError doesn't throw on non-matching pattern", () => {
+    const result = match("valid")(
+      ["invalid", throwError("Invalid input")],
+      [_, "valid"]
+    );
+    expect(result).toBe("valid");
   });
 
   test("PHP-style redirector example", () => {
@@ -571,5 +517,64 @@ describe("match - Error helpers (PHP-style)", () => {
     expect(process({ type: "user", role: "admin" })).toBe("Admin access");
     expect(() => process({ type: "user", role: "unknown" })).toThrow("Unknown role");
     expect(() => process({ invalid: true })).toThrow("Invalid data structure");
+  });
+});
+
+describe("match - Flat API", () => {
+  test("basic value matching", () => {
+    expect(match(0, 0, "zero", 1, "one", 42, "the answer")).toBe("zero");
+    expect(match(1, 0, "zero", 1, "one", 42, "the answer")).toBe("one");
+    expect(match(42, 0, "zero", 1, "one", 42, "the answer")).toBe("the answer");
+  });
+
+  test("wildcard as default", () => {
+    expect(match(99, 0, "zero", 1, "one", _, "other")).toBe("other");
+  });
+
+  test("no match returns undefined", () => {
+    expect(match(99, 0, "zero", 1, "one")).toBe(undefined);
+  });
+
+  test("guard predicate", () => {
+    const result = match(17,
+      (x) => x >= 18, "adult",
+      (x) => x >= 13, "teenager",
+      _, "child"
+    );
+    expect(result).toBe("teenager");
+  });
+
+  test("object pattern with capture", () => {
+    const user = { name: "Ana", role: "admin" };
+    const result = match(user,
+      { role: "admin", name: "$n" }, (b) => `Hello ${b.n}`,
+      { role: "user",  name: "$n" }, (b) => `Hi ${b.n}`,
+      _, "guest"
+    );
+    expect(result).toBe("Hello Ana");
+  });
+
+  test("or pattern", () => {
+    expect(match(404, or(200, 201), "success", or(400, 404), "client error", _, "other")).toBe("client error");
+  });
+
+  test("throwError in flat mode", () => {
+    expect(() => match(null, null, throwError("null not allowed"), _, "ok")).toThrow("null not allowed");
+  });
+
+  test("one-liner expression", () => {
+    const classify = (n) => match(n, (x) => x >= 18, "adult", (x) => x >= 13, "teen", _, "child");
+    expect(classify(20)).toBe("adult");
+    expect(classify(15)).toBe("teen");
+    expect(classify(5)).toBe("child");
+  });
+
+  test("array mode still works after flat addition", () => {
+    const result = match(2)(
+      [1, "one"],
+      [2, "two"],
+      [_, "other"]
+    );
+    expect(result).toBe("two");
   });
 });

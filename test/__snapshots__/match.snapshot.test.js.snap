@@ -1,0 +1,9 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`match - Snapshot Testing for Complex Patterns > array of objects with complex matching 1`] = `"No match"`;
+
+exports[`match - Snapshot Testing for Complex Patterns > complex nested object with destructuring and guards 1`] = `"Admin John Doe from New York"`;
+
+exports[`match - Snapshot Testing for Complex Patterns > exhaustive matching without _ault should throw 1`] = `[Error: No match: 5]`;
+
+exports[`match - Snapshot Testing for Complex Patterns > pattern with OR and AND-like usage (using multiple patterns) 1`] = `30`;
