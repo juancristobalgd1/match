@@ -578,3 +578,50 @@ describe("match - Flat API", () => {
     expect(result).toBe("two");
   });
 });
+
+describe("match - Untested Edge Cases", () => {
+  test("or with NaN", () => {
+    expect(match(NaN)([or(NaN), "matched"], [_, "default"])).toBe("matched");
+    expect(match(1)([or(NaN), "matched"], [_, "default"])).toBe("default");
+  });
+
+  test("handler returning falsy values", () => {
+    expect(match(true)([true, false], [_, "default"])).toBe(false);
+    expect(match(0)([0, 0], [_, -1])).toBe(0);
+    expect(match("")(["", ""], [_, "default"])).toBe("");
+    expect(match(null)([null, null], [_, "default"])).toBe(null);
+  });
+
+  test("callback handler returning false", () => {
+    expect(match(true)([true, () => false], [_, "default"])).toBe(false);
+    let called = false;
+    match(false)([true, () => { called = true; }], [false, () => { called = true; }]);
+    expect(called).toBe(true);
+  });
+
+  test("flat API with array patterns", () => {
+    expect(match([1, 2, 3], [1, _, 3], "matched", _, "default")).toBe("matched");
+    expect(match([4, 5, 6], [1, _, 3], "matched", _, "default")).toBe("default");
+  });
+
+  test("object pattern matching array by index", () => {
+    expect(match([1, 2, 3])([{ 0: 1, 1: 2, 2: 3 }, "matched"], [_, "default"])).toBe("matched");
+    expect(match([1, 2, 4])([{ 0: 1, 1: 2, 2: 3 }, "matched"], [_, "default"])).toBe("default");
+  });
+
+  test("or with NaN in exhaustive mode", () => {
+    expect(match(NaN).exhaustive()([or(NaN), "matched"])).toBe("matched");
+    expect(() => match(1).exhaustive()([or(NaN), "matched"])).toThrow("No match");
+  });
+
+  test("valueOf and toString coercion on result", () => {
+    const res = match(42)([42, 100], [_, 0]);
+    expect(res.valueOf()).toBe(100);
+    expect(res.toString()).toBe("100");
+  });
+
+  test("no patterns returns undefined", () => {
+    const res = match(42)();
+    expect(res).toBe(undefined);
+  });
+});

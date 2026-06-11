@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>match-pro vs if/else</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; color: #222; padding: 24px; }
+  h1 { text-align: center; margin-bottom: 24px; font-size: 1.5rem; }
+  h1 small { font-weight: 400; font-size: .9rem; color: #666; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1100px; margin: 0 auto; }
+  .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.12); overflow: hidden; }
+  .card-header { padding: 10px 14px; font-weight: 600; font-size: .85rem; text-transform: uppercase; letter-spacing: .03em; }
+  .card-header.match   { background: #dbeafe; color: #1e40af; }
+  .card-header.ifelse  { background: #fce7f3; color: #9d174d; }
+  .card-body { padding: 14px; font-size: .82rem; line-height: 1.5; }
+  pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; font-size: .78rem; overflow-x: auto; margin-bottom: 10px; }
+  .output { padding: 8px 12px; border-radius: 6px; font-weight: 500; min-height: 1.5em; }
+  .output.match   { background: #eff6ff; border-left: 3px solid #3b82f6; }
+  .output.ifelse  { background: #fdf2f8; border-left: 3px solid #ec4899; }
+  .label { font-size: .7rem; text-transform: uppercase; color: #64748b; letter-spacing: .04em; margin-bottom: 2px; }
+  .section-title { grid-column: 1 / -1; font-size: 1.1rem; font-weight: 600; margin: 8px 0 4px; padding: 6px 0; border-bottom: 1px solid #ddd; }
+  .equal { color: #16a34a; font-weight: 700; text-align: center; font-size: 1.2rem; }
+  .note { color: #64748b; font-size: .75rem; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<h1>match‑pro <small>vs</small> if/else</h1>
+<div class="grid" id="app"></div>
+
+<script>
+// ===== match-pro library (bundled inline, < 1 KB) =====
+const _ = Symbol.for("m-w");
+const or = (...patterns) => (value) => patterns.some((p) => Object.is(value, p));
+const throwError = (m) => () => { throw Error(m); };
+const match = (value, ...flat) => {
+  if (flat.length) {
+    for (let i = 0; i < flat.length - 1; i += 2) {
+      const bindings = {};
+      if (checkMatch(value, flat[i], bindings)) {
+        const h = flat[i + 1];
+        return typeof h === "function" ? h(bindings, value) : h;
+      }
+    }
+    return undefined;
+  }
+  let exhaustive = false;
+  const executeMatch = (...cases) => {
+    let matched = false, hasDefault = false, result = undefined;
+    for (const [pattern, handler] of cases) {
+      const bindings = {};
+      const isDefault = pattern === _;
+      if (isDefault) hasDefault = true;
+      const matches = checkMatch(value, pattern, bindings);
+      if (matches) {
+        matched = true;
+        result = typeof handler === "function" ? handler(bindings, value) : handler;
+        break;
+      }
+    }
+    if (exhaustive && !(matched || hasDefault)) throw Error("No match: " + JSON.stringify(value));
+    return result;
+  };
+  executeMatch.exhaustive = () => { exhaustive = true; return executeMatch; };
+  return executeMatch;
+};
+function checkMatch(value, pattern, bindings) {
+  if (pattern === _) return true;
+  if (typeof pattern === "function") return pattern(value);
+  if (typeof pattern !== "object" || pattern === null) return Object.is(value, pattern);
+  if (Array.isArray(pattern)) {
+    if (!Array.isArray(value)) return false;
+    if (pattern.length !== value.length) return false;
+    return pattern.every((p, i) => checkMatch(value[i], p, bindings));
+  }
+  if (typeof value !== "object" || value === null) return false;
+  for (const key in pattern) {
+    const pat = pattern[key];
+    if (typeof pat === "string" && pat.startsWith("$")) { bindings[pat.slice(1)] = value[key]; continue; }
+    if (pat === _) continue;
+    if (!checkMatch(value[key], pat, bindings)) return false;
+  }
+  return true;
+}
+
+// ===== Demo cases =====
+const cases = [
+  {
+    title: "Primitive matching",
+    value: 2,
+    matchCode: `match(2)(
+  [1, "uno"],
+  [2, "dos"],
+  [3, "tres"],
+  [_, "otro"]
+)`,
+    ifCode: `let result;
+if (n === 1) result = "uno";
+else if (n === 2) result = "dos";
+else if (n === 3) result = "tres";
+else result = "otro";`,
+    runMatch: () => match(2)([1, "uno"], [2, "dos"], [3, "tres"], [_, "otro"]),
+    runIf: () => { const n = 2; let r; if (n === 1) r = "uno"; else if (n === 2) r = "dos"; else if (n === 3) r = "tres"; else r = "otro"; return r; }
+  },
+  {
+    title: "Object destructuring",
+    value: { name: "Ana", role: "admin" },
+    matchCode: `match(user)(
+  [{ role: "admin", name: "$n" },
+    (b) => \`Hello \${b.n}\`],
+  [{ role: "user" }, "Regular user"],
+  [_, "Guest"]
+)`,
+    ifCode: `let result;
+if (user.role === "admin")
+  result = "Hello " + user.name;
+else if (user.role === "user")
+  result = "Regular user";
+else result = "Guest";`,
+    runMatch: () => match({ name: "Ana", role: "admin" })([{ role: "admin", name: "$n" }, (b) => `Hello ${b.n}`], [{ role: "user" }, "Regular user"], [_, "Guest"]),
+    runIf: () => { const u = { name: "Ana", role: "admin" }; let r; if (u.role === "admin") r = "Hello " + u.name; else if (u.role === "user") r = "Regular user"; else r = "Guest"; return r; }
+  },
+  {
+    title: "Guards / predicates",
+    value: 17,
+    matchCode: `match(age)(
+  [(x) => x >= 18, "Adult"],
+  [(x) => x >= 13, "Teenager"],
+  [_, "Child"]
+)`,
+    ifCode: `let result;
+if (age >= 18) result = "Adult";
+else if (age >= 13) result = "Teenager";
+else result = "Child";`,
+    runMatch: () => match(17)([(x) => x >= 18, "Adult"], [(x) => x >= 13, "Teenager"], [_, "Child"]),
+    runIf: () => { const a = 17; let r; if (a >= 18) r = "Adult"; else if (a >= 13) r = "Teenager"; else r = "Child"; return r; }
+  },
+  {
+    title: "Array / tuple matching",
+    value: [1, 999, 3],
+    matchCode: `match([1, 999, 3])(
+  [[1, _, 3], "First & last match"],
+  [[_, 2, _], "Middle is 2"],
+  [_, "Other"]
+)`,
+    ifCode: `let result;
+if (arr[0] === 1 && arr[2] === 3)
+  result = "First & last match";
+else if (arr[1] === 2)
+  result = "Middle is 2";
+else result = "Other";`,
+    runMatch: () => match([1, 999, 3])([[1, _, 3], "First & last match"], [[_, 2, _], "Middle is 2"], [_, "Other"]),
+    runIf: () => { const a = [1, 999, 3]; let r; if (a[0] === 1 && a[2] === 3) r = "First & last match"; else if (a[1] === 2) r = "Middle is 2"; else r = "Other"; return r; }
+  },
+  {
+    title: "OR patterns (HTTP codes)",
+    value: 404,
+    matchCode: `match(code)(
+  [or(200, 201, 204), "success"],
+  [or(400, 403, 404), "client error"],
+  [or(500, 502),      "server error"],
+  [_, "unknown"]
+)`,
+    ifCode: `let result;
+if (code === 200 || code === 201 || code === 204)
+  result = "success";
+else if (code === 400 || code === 403 || code === 404)
+  result = "client error";
+else if (code === 500 || code === 502)
+  result = "server error";
+else result = "unknown";`,
+    runMatch: () => match(404)([or(200, 201, 204), "success"], [or(400, 403, 404), "client error"], [or(500, 502), "server error"], [_, "unknown"]),
+    runIf: () => { const c = 404; let r; if (c === 200 || c === 201 || c === 204) r = "success"; else if (c === 400 || c === 403 || c === 404) r = "client error"; else if (c === 500 || c === 502) r = "server error"; else r = "unknown"; return r; }
+  },
+  {
+    title: "Nested matching",
+    value: { user: { profile: { role: "admin" } } },
+    matchCode: `match(data)(
+  [{ user: { profile:
+      { role: "admin" } } }, "Admin"],
+  [{ user: { profile:
+      { role: "user" } } }, "User"],
+  [_, "No access"]
+)`,
+    ifCode: `let result;
+if (data.user?.profile?.role
+    === "admin")
+  result = "Admin";
+else if (data.user?.profile?.role
+    === "user")
+  result = "User";
+else result = "No access";`,
+    runMatch: () => match({ user: { profile: { role: "admin" } } })([{ user: { profile: { role: "admin" } } }, "Admin"], [{ user: { profile: { role: "user" } } }, "User"], [_, "No access"]),
+    runIf: () => { const d = { user: { profile: { role: "admin" } } }; let r; if (d.user?.profile?.role === "admin") r = "Admin"; else if (d.user?.profile?.role === "user") r = "User"; else r = "No access"; return r; }
+  },
+  {
+    title: "Redux-style action",
+    value: { type: "ADD_TODO", payload: { text: "Learn match" } },
+    matchCode: `match(action)(
+  [{ type: "ADD_TODO",
+     payload: { text: "$t" } },
+    (b) => \`Add: \${b.t}\`],
+  [{ type: "TOGGLE_TODO" },
+    "Toggle"],
+  [_, "Unknown"]
+)`,
+    ifCode: `let result;
+if (action.type === "ADD_TODO")
+  result = "Add: "
+    + action.payload.text;
+else if (action.type
+    === "TOGGLE_TODO")
+  result = "Toggle";
+else result = "Unknown";`,
+    runMatch: () => match({ type: "ADD_TODO", payload: { text: "Learn match" } })([{ type: "ADD_TODO", payload: { text: "$t" } }, (b) => `Add: ${b.t}`], [{ type: "TOGGLE_TODO" }, "Toggle"], [_, "Unknown"]),
+    runIf: () => { const a = { type: "ADD_TODO", payload: { text: "Learn match" } }; let r; if (a.type === "ADD_TODO") r = "Add: " + a.payload.text; else if (a.type === "TOGGLE_TODO") r = "Toggle"; else r = "Unknown"; return r; }
+  },
+  {
+    title: "Flat syntax (inline)",
+    value: 15,
+    matchCode: `// One-liner, no [_, handler] pairs
+const classify = (n) =>
+  match(n,
+    (x) => x >= 18, "adult",
+    (x) => x >= 13, "teen",
+    _, "child"
+  );
+classify(15)`,
+    ifCode: `const classify = (n) => {
+  if (n >= 18) return "adult";
+  else if (n >= 13) return "teen";
+  else return "child";
+};
+classify(15)`,
+    runMatch: () => { const classify = (n) => match(n, (x) => x >= 18, "adult", (x) => x >= 13, "teen", _, "child"); return classify(15); },
+    runIf: () => { const classify = (n) => { if (n >= 18) return "adult"; else if (n >= 13) return "teen"; else return "child"; }; return classify(15); }
+  },
+];
+
+// ===== Render =====
+const app = document.getElementById("app");
+cases.forEach((c, i) => {
+  const mRes = c.runMatch();
+  const iRes = c.runIf();
+
+  const e = document.createElement("template");
+  e.innerHTML = `
+    <div class="section-title">${c.title}</div>
+    <div class="card">
+      <div class="card-header match">⬡ match()</div>
+      <div class="card-body">
+        <pre>${c.matchCode}</pre>
+        <div class="label">Result</div>
+        <div class="output match">${JSON.stringify(mRes)}</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header ifelse">▣ if / else</div>
+      <div class="card-body">
+        <pre>${c.ifCode}</pre>
+        <div class="label">Result</div>
+        <div class="output ifelse">${JSON.stringify(iRes)}</div>
+      </div>
+    </div>
+  `;
+  app.appendChild(e.content);
+});
+</script>
+</body>
+</html>
